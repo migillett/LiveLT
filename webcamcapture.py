@@ -1,26 +1,42 @@
-import cv2 # pip install python-opencv
+import cv2 # pip install opencv-python
 
 class QRCodeCapture():
-    def __init__(self, webcam_select=0, width=1280, height=720, brightness=150) -> None:
+    def __init__(self, webcam_select=None, width=1280, height=720, brightness=150) -> None:
         self.title = 'LiveLT | Version 0.1'
-        self.webcam_select = webcam_select
+
         self.width, self.height = width, height
         self.brightness = brightness
 
+        self.webcam_select = webcam_select
+        while self.webcam_select == None:
+            self.discover_devices()
+        
         self.init_camera()
-
         self.qrscan = cv2.QRCodeDetector()
         
         self.captured_data = []
-
         self.capture_QRCode() # while loop
-
         self.capture.release()
         cv2.destroyAllWindows()
         exit(0)
 
+    def discover_devices(self, iterate=10): # still working on this
+        # https://discuss.dizzycoding.com/listing-available-devices-in-python-opencv/
+        index = 0
+        print('Searching for devices...')
+        while index < iterate:
+            print(f'Searching device: {index}')
+            cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)
+            if cap.read()[0]:
+                print(f'Found device at index: {index}')
+                # self.devices.append(index)
+                self.webcam_select = index
+                cap.release()
+                break
+            index += 1
+
     def init_camera(self):
-        self.capture = cv2.VideoCapture(self.webcam_select)
+        self.capture = cv2.VideoCapture(self.webcam_select, cv2.CAP_DSHOW)
         self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
         self.capture.set(cv2.CAP_PROP_BRIGHTNESS, self.brightness)
@@ -52,4 +68,4 @@ class QRCodeCapture():
         print(self.captured_data)
 
 
-QRCodeCapture(webcam_select=2)
+QRCodeCapture(webcam_select=1)
