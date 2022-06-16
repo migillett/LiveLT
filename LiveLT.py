@@ -1,63 +1,135 @@
-# https://www.zebra.com/us/en/support-downloads/scanners/general-purpose-scanners/ds4308.html#pageandfilelist_e56b
-# https://pythonspot.com/pyqt5-textbox-example/
+#!/usr/bin/python3
 
+# built-in
 import sys
-from PyQt5.QtWidgets import *
-from PyQt5.Qt import Qt
+from tkinter import Image
 
+# install using pip
+import cv2
 import qrcode
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
 
-def create_qr(data, filename):
-    img = qrcode.make(data)
-    img.save(filename)
+# https://www.geeksforgeeks.org/creating-a-camera-application-using-pyqt5/
+from PyQt5.QtMultimedia import *
+from PyQt5.QtMultimediaWidgets import *
 
-class App(QWidget):
+# def create_qr(data, filename):
+#     img = qrcode.make(data)
+#     img.save(filename)
+
+global captured_data
+captured_data = ['Georgia College & State University']
+
+class LiveLT(QWidget):
     def __init__(self):
-        super().__init__()
+        super(LiveLT, self).__init__()
         # set keyboard focus policy
         self.setFocusPolicy(Qt.StrongFocus)
 
-        self.title = 'LiveLT Version 0.1'
-        self.left = 10
-        self.top = 10
-        self.width = 440
-        self.height = 400
-        self.initUI()
-    
-    def initUI(self):
-        self.setWindowTitle(self.title)
-        self.setGeometry(self.left, self.top, self.width, self.height)
-    
-        # Create textbox
-        self.textbox = QLineEdit(self)
-        self.textbox.move(20, 20)
-        self.textbox.resize(400,25)
+        self.setWindowTitle('LiveLT Version 0.1')
+        self.width, self.height = 440, 440
+        self.setGeometry(10, 10, self.width, self.height)
 
-        # Create name list
-        self.name_list = QListWidget(self)
-        self.name_list.setGeometry(20,60,400,250)
+        # self.captured_data = []
+        self.name_index = 0
         
-        # # Create a button in the window
-        # self.button = QPushButton('Show text', self)
-        # self.button.move(20,80)
-        # self.button.clicked.connect(self.save_name)
+        self.VBL = QVBoxLayout()
 
-        self.show()
+        self.available_cameras = QCameraInfo.availableCameras()
+        if not self.available_cameras:
+            exit()
+
+        # toolbar = QToolBar('Camera Tool Bar')
+        # self.addToolBar(toolbar)
+
+        # # camera selection
+        # camera_selector = QComboBox()
+        # camera_selector.addItems([camera.description() for camera in self.available_cameras])
+        # camera_selector.currentIndexChanged.connect(self.initCamera)
+
+        # toolbar.addWidget(camera_selector)
+
+        self.FeedLabel = QLabel()
+        self.VBL.addWidget(self.FeedLabel)
+
+        self.cancelButton = QPushButton('Exit')
+        self.cancelButton.clicked.connect(self.stopCamera)
+        self.VBL.addWidget(self.cancelButton)
+
+        self.name_label = QLabel()
+        self.VBL.addWidget(self.name_label)
+
+        self.worker = ImageWorker(camera_index=2)
+        self.worker.start()
+        self.worker.ImageUpdate.connect(self.viewFrame)
+
+        self.setLayout(self.VBL)
+
+    def viewFrame(self, Image):
+        self.FeedLabel.setPixmap(QPixmap.fromImage(Image))
+
+    def stopCamera(self):
+        self.worker.stop()
     
-    def select_name(self):
-        pass
-
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Return:
-            self.name_list.addItem(self.textbox.text())
-            self.textbox.setText("")
-    
-    # @pyqtSlot()
-    # def save_name(self):
-    #     self.names.append(self.textbox.text())
-    #     self.textbox.setText("")
+        if event.key() == Qt.Key_Right:
+            self.name_index += 1
+            try:
+                print(captured_data[self.name_index])
+                self.name_label.setText(captured_data[self.name_index])
+            except IndexError:
+                self.name_label.setText(captured_data[-1])
+                print(captured_data[-1])
+
+        elif event.key() == Qt.Key_Left:
+            if self.name_index > 0:
+                self.name_index -= 1
+                print(captured_data[self.name_index])
+                self.name_label.setText(captured_data[self.name_index])
+
+    def exit(self):
+        self.capture.release()
+        cv2.destroyAllWindows()
+
+
+class ImageWorker(QThread):
+    ImageUpdate = pyqtSignal(QImage)
+    def __init__(self, camera_index):
+        super().__init__()
+        self.camera_index = camera_index
+        self.capture = cv2.VideoCapture(camera_index)
+        self.ThreadActive = True
+
+        self.captured_data = []
+
+        self.qrscan = cv2.QRCodeDetector()
+
+    def run(self):
+        while self.ThreadActive:
+            ret, frame = self.capture.read()
+            if ret:
+                Image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                FlippedImage = cv2.flip(Image, 1)
+                ConvertToQtFormat = QImage(FlippedImage.data, FlippedImage.shape[1], FlippedImage.shape[0], QImage.Format_RGB888)
+                Pic = ConvertToQtFormat.scaled(640, 480, Qt.KeepAspectRatio)
+                self.ImageUpdate.emit(Pic)
+
+                data, points, _ = self.qrscan.detectAndDecode(frame)
+                if len(data) > 0:
+                    # LiveLT.update_names(data)
+                    if data not in captured_data:
+                        captured_data.append(data)
+                        print(captured_data)
+
+    def stop(self):
+        self.ThreadActive = False
+        self.quit()
+        
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    ex = App()
-    sys.exit(app.exec_())
+    window = LiveLT()
+    window.show()
+    sys.exit(app.exec())

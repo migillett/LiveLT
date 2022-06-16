@@ -1,59 +1,10 @@
 #!/usr/bin/python3
 
-import sys
-
 # pip install python-opencv
 import cv2
 
-# pip install pyqt5
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
-
-title = 'LiveLT | Version 0.1'
-
-captured_data = [] # list of all names captured by QRCodeCapture
-
-class LiveLtGUI(QMainWindow):
-    def __init__(self, width=1280, height=720):
-        QMainWindow.__init__(self)
-
-        self.setWindowTitle = title
-        self.setGeometry(10, 10, width, height)
-
-        self.menubar_gui()
-
-        self.name_label = QLabel(self)
-        self.name_label.setText('Georgia College & State University')
-
-    def menubar_gui(self):
-        # optionsAction = QAction(' &Options', self)
-        # optionsAction.setStatusTip('Webcam Options')
-
-        exitAction = QAction(' &Exit', self)
-        exitAction.setStatusTip('Exit')
-        exitAction.triggered.connect(qApp.quit)
-
-        self.statusBar()
-
-        menubar = self.menuBar()
-
-        filemenu = menubar.addMenu('&File')
-        filemenu.addAction(exitAction)
-
-    def update_name(self):
-        self.name_label.setText(captured_data[-1])
-
-
-class QRCodeCapture():
-    def __init__(self, webcam_select=0, width=1280, height=720, brightness=150, webcam_view=False) -> None:
-        self.webcam_select = webcam_select
-        self.webcam_view = webcam_view
-import cv2 # pip install opencv-python
-
 class QRCodeCapture():
     def __init__(self, webcam_select=None, width=1280, height=720, brightness=150) -> None:
-        self.title = 'LiveLT | Version 0.1'
 
         self.width, self.height = width, height
         self.brightness = brightness
@@ -100,14 +51,14 @@ class QRCodeCapture():
 
             if frame is not None:
                 if self.webcam_view:
-                    cv2.imshow(title, frame)
+                    cv2.imshow('QR Code Scanner', frame)
 
                 data, points, _ = self.qrscan.detectAndDecode(frame)
 
                 if len(data) > 0: # if a QR is detected
-                    if data not in self.captured_data: # and is not a duplicate of past scan
-                        captured_data.append(data)
-                        LiveLtGUI.update_name()
+                    return data
+                    # if data not in self.captured_data: # and is not a duplicate of past scan
+                    #     self.captured_data.append(data)
 
                 if cv2.waitKey(1) & 0xFF==27: # escape key cancel
                     print('Webcam closed')
@@ -118,10 +69,6 @@ class QRCodeCapture():
                 self.capture.release()
                 self.init_camera()
 
-# try:
-#     QRCodeCapture(webcam_select=2)
-# except KeyboardInterrupt:
-#     exit(0)
 
-
-QRCodeCapture(webcam_select=1)
+if __name__ == "__main__":
+    QRCodeCapture(webcam_select=1)
