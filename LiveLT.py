@@ -2,7 +2,7 @@
 
 # built-in
 import sys
-from os import mkdir, path
+from os import path
 import json
 
 # install using pip
@@ -14,6 +14,12 @@ from PyQt5.QtGui import *
 # https://www.geeksforgeeks.org/creating-a-camera-application-using-pyqt5/
 from PyQt5.QtMultimedia import *
 from PyQt5.QtMultimediaWidgets import *
+
+'''
+### TO DO LIST ###
+- add in a way to have text auto-scale on lower thirds (long names)
+- options menu to change running config
+'''
 
 global captured_data
 captured_data = []
@@ -197,7 +203,6 @@ class ChromaKeyWindow(QMainWindow):
     def updateTitle(self, text):
         self.name_label.setText(text)
         self.name_label.adjustSize()
-        # need to add text scaling to fit long names
 
     def paintEvent(self, event):
         painter = QPainter(self)
