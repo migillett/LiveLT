@@ -21,6 +21,11 @@ from PyQt5.QtMultimediaWidgets import *
 - options menu to change running config
 '''
 
+# https://support.newtek.com/hc/en-us/articles/115004534654-TriCaster-remote-control-port
+# port 80 or 5992 REST API
+
+# Tricaster SDK: https://www.newtek.com/solutions/newtek-developer-network/sdk-programs/
+
 global captured_data
 captured_data = []
 
