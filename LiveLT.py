@@ -2,9 +2,8 @@
 
 # built-in
 import sys
-from os import path
-from tkinter import EventType
-from turtle import back
+from os import mkdir, path
+import json
 
 # install using pip
 import cv2
@@ -17,20 +16,35 @@ from PyQt5.QtMultimedia import *
 from PyQt5.QtMultimediaWidgets import *
 
 global captured_data
-captured_data = ['LiveLT']
+captured_data = []
 
 
 class LiveLTMainGui(QMainWindow):
     def __init__(self):
         super(LiveLTMainGui, self).__init__()
 
+        self.current_dir = path.dirname(path.realpath(__file__))
+        self.config_json = path.join(self.current_dir, 'config.json')
+        
+        self.config = {
+            'webcam_index': 0,
+            'vf_dimensions': (480, 360),
+            'ck_dimensions': (1920, 1080),
+            'ck_bkgd': '#009933',
+            'ck_ltcolor': '#003366',
+            'default_slide': 'LiveLT',
+            'font': 'Arial',
+            'font_pt': 60,
+            'font_color': '#ffffff'
+        }
+
+        self.loadConfig()
+        captured_data.append(self.config['default_slide'])
+
         # set keyboard focus policy
         self.setFocusPolicy(Qt.StrongFocus)
 
-        self.chromaKeyWindow = ChromaKeyWindow()
-
         self.setWindowTitle('LiveLT Version 0.1')
-        self.vfWidth, self.vfHeight = 480, 360
 
         self.name_index = 0
 
@@ -55,13 +69,15 @@ class LiveLTMainGui(QMainWindow):
         # camera selection
         self.camera_selector = QComboBox()
         self.camera_selector.addItems([camera.description() for camera in self.available_cameras])
+        self.camera_selector.setCurrentIndex(self.config['webcam_index'])
+        self.select_camera(index=self.config['webcam_index'])
         self.camera_selector.currentIndexChanged.connect(self.select_camera)
         self.veritcalLayout.addWidget(self.camera_selector)
 
         # Video Feed
         self.FeedLabel = QLabel('Select a camera from the dropdown menu above')
         self.FeedLabel.setAlignment(Qt.AlignCenter)
-        self.FeedLabel.setFixedSize(self.vfWidth, self.vfHeight)
+        self.FeedLabel.setFixedSize(self.config['vf_dimensions'][0], self.config['vf_dimensions'][1])
         self.FeedLabel.setStyleSheet('Border: 1px solid black;')
         self.veritcalLayout.addWidget(self.FeedLabel)
 
@@ -93,6 +109,16 @@ class LiveLTMainGui(QMainWindow):
         self.startChromaKeyButton.clicked.connect(self.initializeChromaKey)
         self.veritcalLayout.addWidget(self.startChromaKeyButton)
 
+    def loadConfig(self):
+        if path.exists(self.config_json):
+            with open(self.config_json, 'r') as j:
+                for key, value in json.load(j).items():
+                    self.config[key] = value
+
+    def exportConfig(self):
+        with open(self.config_json, 'w') as j:
+            json.dump(self.config, j)
+            
     def viewFrame(self, Image):
         self.FeedLabel.setPixmap(QPixmap.fromImage(Image))
 
@@ -104,7 +130,8 @@ class LiveLTMainGui(QMainWindow):
 
     def select_camera(self, index):
         self.stopCamera()
-        self.worker = ImageWorker(camera_index=index, width=self.vfWidth, height=self.vfHeight)
+        self.config['webcam_index'] = index
+        self.worker = ImageWorker(**self.config)
         self.worker.start()
         self.worker.ImageUpdate.connect(self.viewFrame)
 
@@ -128,6 +155,7 @@ class LiveLTMainGui(QMainWindow):
         self.name_label.setText(f'Currently Displaying: {name}')
 
     def initializeChromaKey(self):
+        self.chromaKeyWindow = ChromaKeyWindow(**self.config)
         self.chromaKeyWindow.show()
 
     def keyPressEvent(self, event):
@@ -138,69 +166,56 @@ class LiveLTMainGui(QMainWindow):
         elif event.key() == Qt.Key_Space:
             self.show_default_name()
 
-    def exit(self):
-        self.capture.release()
-        cv2.destroyAllWindows()
+    def closeEvent(self, event):
+        self.exportConfig()
+        # return super().closeEvent(a0)
 
 
 class ChromaKeyWindow(QMainWindow):
-    def __init__(self, bkgnd_color='#009933', lt_color='#003366'):
+    def __init__(self, **kwargs):
         super(ChromaKeyWindow, self).__init__()
 
-        self.bkgnd_color = bkgnd_color
-        self.lt_color = lt_color
+        self.lt_color = kwargs['ck_ltcolor']
 
-        self.w, self.h = 1280, 720
+        self.default = kwargs['default_slide']
+
+        self.w, self.h = kwargs['ck_dimensions'][0], kwargs['ck_dimensions'][1]
         self.resize(self.w, self.h)
         self.setWindowTitle('LiveLT Chromakey')
-        self.setStyleSheet(f'background-color: {self.bkgnd_color};') #chroma-key green
+        self.setStyleSheet(f'background-color: {kwargs["ck_bkgd"]};') #chroma-key green
 
-    def InitGui(self):
+        self.font = QFont()
+        self.font.setFamily(kwargs['font'])
+        self.font.setPointSize(kwargs['font_pt'])
+
         self.name_label = QLabel(self)
-        self.name_label.setText('LiveLT')
-
-        font = QFont()
-        font.setFamily('Arial')
-        self.name_label.setFont(font)
+        self.name_label.setFont(self.font)
+        self.name_label.setStyleSheet(f'background-color: transparent; color: {kwargs["font_color"]}')
+        self.name_label.move(200, int(self.h*0.835))
+        self.updateTitle(self.default)
 
     def updateTitle(self, text):
         self.name_label.setText(text)
+        self.name_label.adjustSize()
+        # need to add text scaling to fit long names
 
     def paintEvent(self, event):
-        self.width, self.height = self.window
         painter = QPainter(self)
         painter.setBrush(QColor(self.lt_color))
         painter.drawRect(0, int(self.h*0.8), self.w, int(self.h*.15))
 
-        # current_dir = path.dirname(path.realpath(__file__))
-        # self.PixmapPath = path.join(current_dir, 'assets', 'ltbkgd.png')
-        # self.ltLabel = QLabel(self)
-        # self.pixmap = QPixmap(self.PixmapPath).scaled(self.width, self.height)
-        # self.ltLabel.setPixmap(self.pixmap)
-        # self.ltLabel.resize(self.pixmap.width(), self.pixmap.height())
-
     def eventFilter(self, a0: 'QObject', a1: 'QEvent') -> bool:
-        if (EventType() == QEvent.Resize):
+        if (Qt.EventType() == QEvent.Resize):
             self.paintEvent()
         return super().eventFilter(a0, a1)
-
-    # def eventFilter(self, obj, event):
-    #     if (event.type() == QEvent.Resize):
-    #         self.paintEvent()
-    #         # if not self.pix.isNull():
-    #         #     pixmap = self.pix.scaled(self.width(), self.height(),Qt.KeepAspectRatio)
-    #         #     if pixmap.width()!=self.width() or pixmap.height()!=self.height():
-    #         self.ResizeSignal.emit(1)
-    #     return super().eventFilter(obj, event)
 
 
 class ImageWorker(QThread):
     ImageUpdate = pyqtSignal(QImage)
-    def __init__(self, camera_index, width=640, height=480):
+    def __init__(self, **kwargs):
         super().__init__()
-        self.width, self.height = width, height
-        self.camera_index = camera_index
-        self.capture = cv2.VideoCapture(camera_index)
+        self.width, self.height = kwargs['vf_dimensions'][0], kwargs['vf_dimensions'][1]
+        self.capture = cv2.VideoCapture(kwargs['webcam_index'])
         self.ThreadActive = True
 
         self.player = QMediaPlayer()
@@ -208,8 +223,7 @@ class ImageWorker(QThread):
         self.qrscan = cv2.QRCodeDetector()
 
     def confirm_audio(self):
-        current_dir = path.dirname(path.realpath(__file__))
-        url = QUrl.fromLocalFile(path.join(current_dir, 'assets', 'cork.mp3'))
+        url = QUrl.fromLocalFile(path.join(path.dirname(path.realpath(__file__)), 'assets', 'cork.mp3'))
         content = QMediaContent(url)
 
         self.player.setMedia(content)

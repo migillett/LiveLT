@@ -152,4 +152,4 @@ cython_debug/
 #.idea/
 
 .DS_Store
-.DS_Store
+config.json
