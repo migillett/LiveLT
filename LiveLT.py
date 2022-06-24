@@ -26,9 +26,6 @@ from PyQt5.QtMultimediaWidgets import *
 
 # Tricaster SDK: https://www.newtek.com/solutions/newtek-developer-network/sdk-programs/
 
-global captured_data
-captured_data = []
-
 
 class LiveLTMainGui(QMainWindow):
     def __init__(self):
@@ -36,6 +33,8 @@ class LiveLTMainGui(QMainWindow):
 
         self.current_dir = path.dirname(path.realpath(__file__))
         self.config_json = path.join(self.current_dir, 'config.json')
+
+        self.captured_data = []
         
         self.config = {
             'webcam_index': 0,
@@ -50,7 +49,7 @@ class LiveLTMainGui(QMainWindow):
         }
 
         self.loadConfig()
-        captured_data.append(self.config['default_slide'])
+        self.captured_data.append(self.config['default_slide'])
 
         # set keyboard focus policy
         self.setFocusPolicy(Qt.StrongFocus)
@@ -92,8 +91,16 @@ class LiveLTMainGui(QMainWindow):
         self.FeedLabel.setStyleSheet('Border: 1px solid black;')
         self.veritcalLayout.addWidget(self.FeedLabel)
 
+        # Selectable list of names scanned
+        self.scannedNamesLabel = QLabel('Scanned Names:')
+        self.veritcalLayout.addWidget(self.scannedNamesLabel)
+        self.scannedNamesList = QListWidget()
+        self.scannedNamesList.insertItem(0, self.captured_data[0])
+        self.scannedNamesList.clicked.connect(self.select_name)
+        self.veritcalLayout.addWidget(self.scannedNamesList)
+
         # Currently displayed name
-        self.name_label = QLabel(f'Currently Displaying: {captured_data[0]}')
+        self.name_label = QLabel(f'Currently Displaying: {self.captured_data[0]}')
         self.veritcalLayout.addWidget(self.name_label)
 
         # Create nested layout for next and previous buttons
@@ -142,25 +149,33 @@ class LiveLTMainGui(QMainWindow):
     def select_camera(self, index):
         self.stopCamera()
         self.config['webcam_index'] = index
-        self.worker = ImageWorker(**self.config)
+        self.worker = self.ImageWorker(**self.config)
         self.worker.start()
         self.worker.ImageUpdate.connect(self.viewFrame)
+
+    def select_name(self, name_index):
+        item = self.name_list.currentIndex()
+        self.update_name_label(item.text())
+
+    def updateNameList(self, item):
+        new_index = len(self.captured_data) + 1
+        self.name_list.insertItem(new_index, item)
 
     def previous_name(self):
         if self.name_index != 0:
             self.name_index -= 1
-            self.update_name_label(captured_data[self.name_index])
-            self.chromaKeyWindow.updateTitle(captured_data[self.name_index])
+            self.update_name_label(self.captured_data[self.name_index])
+            self.chromaKeyWindow.updateTitle(self.captured_data[self.name_index])
 
     def next_name(self):
-        if self.name_index + 2 <= len(captured_data):
+        if self.name_index + 2 <= len(self.captured_data):
             self.name_index += 1
-            self.update_name_label(captured_data[self.name_index])
-            self.chromaKeyWindow.updateTitle(captured_data[self.name_index])
+            self.update_name_label(self.captured_data[self.name_index])
+            self.chromaKeyWindow.updateTitle(self.captured_data[self.name_index])
 
     def show_default_name(self):
-        self.update_name_label(captured_data[0])
-        self.chromaKeyWindow.updateTitle(captured_data[0])
+        self.update_name_label(self.captured_data[0])
+        self.chromaKeyWindow.updateTitle(self.captured_data[0])
 
     def update_name_label(self, name):
         self.name_label.setText(f'Currently Displaying: {name}')
@@ -179,7 +194,47 @@ class LiveLTMainGui(QMainWindow):
 
     def closeEvent(self, event):
         self.exportConfig()
-        # return super().closeEvent(a0)
+
+    class ImageWorker(QThread):
+        ImageUpdate = pyqtSignal(QImage)
+        def __init__(self, **kwargs):
+            super().__init__()
+            self.width, self.height = kwargs['vf_dimensions'][0], kwargs['vf_dimensions'][1]
+            self.capture = cv2.VideoCapture(kwargs['webcam_index'])
+            self.ThreadActive = True
+
+            self.player = QMediaPlayer()
+
+            self.qrscan = cv2.QRCodeDetector()
+
+        def confirm_audio(self):
+            url = QUrl.fromLocalFile(path.join(path.dirname(path.realpath(__file__)), 'assets', 'cork.mp3'))
+            content = QMediaContent(url)
+
+            self.player.setMedia(content)
+            self.player.setVolume(100)
+            self.player.play()
+
+        def run(self):
+            while self.ThreadActive:
+                ret, frame = self.capture.read()
+                if ret:
+                    Image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    ConvertToQtFormat = QImage(Image.data, Image.shape[1], Image.shape[0], QImage.Format_RGB888)
+                    Pic = ConvertToQtFormat.scaled(self.width, self.height, Qt.KeepAspectRatio)
+                    self.ImageUpdate.emit(Pic)
+
+                    data, points, _ = self.qrscan.detectAndDecode(frame)
+                    if len(data) > 0:
+                        # yield data
+                        if data != LiveLTMainGui.captured_data[-1]:
+                            LiveLTMainGui.captured_data.append(data)
+                            LiveLTMainGui.update_name_list(data)
+                            self.confirm_audio()
+
+        def stop(self):
+            self.ThreadActive = False
+            self.quit()
 
 
 class ChromaKeyWindow(QMainWindow):
@@ -218,47 +273,6 @@ class ChromaKeyWindow(QMainWindow):
         if (Qt.EventType() == QEvent.Resize):
             self.paintEvent()
         return super().eventFilter(a0, a1)
-
-
-class ImageWorker(QThread):
-    ImageUpdate = pyqtSignal(QImage)
-    def __init__(self, **kwargs):
-        super().__init__()
-        self.width, self.height = kwargs['vf_dimensions'][0], kwargs['vf_dimensions'][1]
-        self.capture = cv2.VideoCapture(kwargs['webcam_index'])
-        self.ThreadActive = True
-
-        self.player = QMediaPlayer()
-
-        self.qrscan = cv2.QRCodeDetector()
-
-    def confirm_audio(self):
-        url = QUrl.fromLocalFile(path.join(path.dirname(path.realpath(__file__)), 'assets', 'cork.mp3'))
-        content = QMediaContent(url)
-
-        self.player.setMedia(content)
-        self.player.setVolume(100)
-        self.player.play()
-
-    def run(self):
-        while self.ThreadActive:
-            ret, frame = self.capture.read()
-            if ret:
-                Image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                ConvertToQtFormat = QImage(Image.data, Image.shape[1], Image.shape[0], QImage.Format_RGB888)
-                Pic = ConvertToQtFormat.scaled(self.width, self.height, Qt.KeepAspectRatio)
-                self.ImageUpdate.emit(Pic)
-
-                data, points, _ = self.qrscan.detectAndDecode(frame)
-                if len(data) > 0:
-                    if data != captured_data[-1]:
-                        captured_data.append(data)
-                        print(captured_data)
-                        self.confirm_audio()
-
-    def stop(self):
-        self.ThreadActive = False
-        self.quit()
         
 
 if __name__ == '__main__':
