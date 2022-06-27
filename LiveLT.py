@@ -38,7 +38,7 @@ class LiveLTMainGui(QMainWindow):
         self.config_json = path.join(self.current_dir, 'config.json')
 
         self.captured_data = []
-        
+
         self.config = {
             'webcam_index': 0,
             'vf_dimensions': (480, 360),
@@ -65,7 +65,7 @@ class LiveLTMainGui(QMainWindow):
         self.available_cameras = QCameraInfo.availableCameras()
         if not self.available_cameras:
             exit()
-        
+
         self.init_gui()
 
     def init_gui(self):
@@ -137,11 +137,10 @@ class LiveLTMainGui(QMainWindow):
                 for key, value in json.load(j).items():
                     self.config[key] = value
 
-
     def exportConfig(self):
         with open(self.config_json, 'w') as j:
             json.dump(self.config, j)
-            
+
     def viewFrame(self, Image):
         self.FeedLabel.setPixmap(QPixmap.fromImage(Image))
 
@@ -182,12 +181,12 @@ class LiveLTMainGui(QMainWindow):
         self.display_name(self.captured_data[0])
         # self.chromaKeyWindow.updateTitle(self.captured_data[0])
 
-    def display_name(self, name):        
+    def display_name(self, name):
         r = tricaster_data_link(ip=self.config['tricaster_ipaddr'], data=name)
         if r == 200:
             self.name_label.setText(f'Currently Displaying: {name}')
         else:
-            self.error_window(message=f'ERROR {r}: unable to communicate with Tricaster')        
+            self.error_window(message=f'ERROR {r}: unable to communicate with Tricaster')
 
     def error_window(self, title, message):
         msg = QMessageBox()
@@ -289,7 +288,7 @@ class LiveLTMainGui(QMainWindow):
 #         if (Qt.EventType() == QEvent.Resize):
 #             self.paintEvent()
 #         return super().eventFilter(a0, a1)
-        
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
