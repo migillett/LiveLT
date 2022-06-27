@@ -37,13 +37,7 @@ class LiveLTMainGui(QMainWindow):
         self.config = {
             'webcam_index': 0,
             'vf_dimensions': (480, 360),
-            'ck_dimensions': (1920, 1080),
-            'ck_bkgd': '#009933',
-            'ck_ltcolor': '#003366',
             'default_slide': 'LiveLT',
-            'font': 'Arial',
-            'font_pt': 60,
-            'font_color': '#ffffff',
             'tricaster_ipaddr': ''
         }
 
@@ -70,6 +64,14 @@ class LiveLTMainGui(QMainWindow):
 
         # create the vertical box layout
         self.veritcalLayout = QVBoxLayout(self.centralWidget)
+
+        # Tricaster IP Address Label
+        # self.tc_ip_label = QLabel('Tricaster IP Address:')
+        # self.veritcalLayout.addWidget(self.tc_ip_label)
+
+        # Tricaster IP textbox
+        # self.tc_ip_textbox = QLineEdit(self).setText(self.config['tricaster_ipaddr'])
+        # self.veritcalLayout.addWidget(self.tc_ip_textbox)
 
         # camera selection label
         self.cameraLabel = QLabel('Select a Camera:')
