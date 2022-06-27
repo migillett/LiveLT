@@ -10,7 +10,7 @@ from os import path
     # 2. You'll need to setup a lower third template with %webkey 01% in a text field
 
 
-def tricaster_data_link(self, ip, data='LiveLT', webkey='WebKey 01'):
+def tricaster_data_link(ip, data='LiveLT', webkey='WebKey 01'):
 
     payload = f'''<shortcuts>
     <shortcut name="datalink_set">

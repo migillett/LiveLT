@@ -24,11 +24,6 @@ from functions.TricasterDataLink import tricaster_data_link
 - options menu to change running config
 '''
 
-# https://support.newtek.com/hc/en-us/articles/115004534654-TriCaster-remote-control-port
-# port 80 or 5992 REST API
-
-# Tricaster SDK: https://www.newtek.com/solutions/newtek-developer-network/sdk-programs/
-
 
 class LiveLTMainGui(QMainWindow):
     def __init__(self):
@@ -126,11 +121,6 @@ class LiveLTMainGui(QMainWindow):
         self.showDefault.clicked.connect(self.set_to_default)
         self.veritcalLayout.addWidget(self.showDefault)
 
-        # Start second chromakey window
-        # self.startChromaKeyButton = QPushButton('Begin Secondary Display')
-        # self.startChromaKeyButton.clicked.connect(self.initializeChromaKey)
-        # self.veritcalLayout.addWidget(self.startChromaKeyButton)
-
     def loadConfig(self):
         if path.exists(self.config_json):
             with open(self.config_json, 'r') as j:
@@ -157,7 +147,7 @@ class LiveLTMainGui(QMainWindow):
         self.worker.start()
         self.worker.ImageUpdate.connect(self.viewFrame)
 
-    def select_name(self, name_index):
+    def select_name(self):
         item = self.name_list.currentIndex()
         self.display_name(item.text())
 
@@ -169,17 +159,14 @@ class LiveLTMainGui(QMainWindow):
         if self.name_index != 0:
             self.name_index -= 1
             self.display_name(self.captured_data[self.name_index])
-            # self.chromaKeyWindow.updateTitle(self.captured_data[self.name_index])
 
     def next_name(self):
         if self.name_index + 2 <= len(self.captured_data):
             self.name_index += 1
             self.display_name(self.captured_data[self.name_index])
-            # self.chromaKeyWindow.updateTitle(self.captured_data[self.name_index])
 
     def set_to_default(self):
         self.display_name(self.captured_data[0])
-        # self.chromaKeyWindow.updateTitle(self.captured_data[0])
 
     def display_name(self, name):
         r = tricaster_data_link(ip=self.config['tricaster_ipaddr'], data=name)
@@ -195,10 +182,6 @@ class LiveLTMainGui(QMainWindow):
         msg.setInformativeText(message)
         msg.setWindowTitle(title)
         msg.exec_()
-
-    # def initializeChromaKey(self):
-    #     self.chromaKeyWindow = ChromaKeyWindow(**self.config)
-    #     self.chromaKeyWindow.show()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Right:
@@ -250,44 +233,6 @@ class LiveLTMainGui(QMainWindow):
         def stop(self):
             self.ThreadActive = False
             self.quit()
-
-
-# class ChromaKeyWindow(QMainWindow):
-#     def __init__(self, **kwargs):
-#         super(ChromaKeyWindow, self).__init__()
-
-#         self.lt_color = kwargs['ck_ltcolor']
-
-#         self.default = kwargs['default_slide']
-
-#         self.w, self.h = kwargs['ck_dimensions'][0], kwargs['ck_dimensions'][1]
-#         self.resize(self.w, self.h)
-#         self.setWindowTitle('LiveLT Chromakey')
-#         self.setStyleSheet(f'background-color: {kwargs["ck_bkgd"]};') #chroma-key green
-
-#         self.font = QFont()
-#         self.font.setFamily(kwargs['font'])
-#         self.font.setPointSize(kwargs['font_pt'])
-
-#         self.name_label = QLabel(self)
-#         self.name_label.setFont(self.font)
-#         self.name_label.setStyleSheet(f'background-color: transparent; color: {kwargs["font_color"]}')
-#         self.name_label.move(200, int(self.h*0.835))
-#         self.updateTitle(self.default)
-
-#     def updateTitle(self, text):
-#         self.name_label.setText(text)
-#         self.name_label.adjustSize()
-
-#     def paintEvent(self, event):
-#         painter = QPainter(self)
-#         painter.setBrush(QColor(self.lt_color))
-#         painter.drawRect(0, int(self.h*0.8), self.w, int(self.h*.15))
-
-#     def eventFilter(self, a0: 'QObject', a1: 'QEvent') -> bool:
-#         if (Qt.EventType() == QEvent.Resize):
-#             self.paintEvent()
-#         return super().eventFilter(a0, a1)
 
 
 if __name__ == '__main__':
