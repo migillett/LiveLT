@@ -4,7 +4,6 @@
 import sys
 from os import path
 import json
-import numpy as np
 
 # install using pip
 import cv2
@@ -15,7 +14,6 @@ from PyQt5.QtGui import *
 # sudo apt-get build-dep qtmultimedia5-dev
 from PyQt5.QtMultimedia import *
 from PyQt5.QtMultimediaWidgets import *
-from urllib3 import HTTPConnectionPool
 
 # Local
 from functions.TricasterDataLink import tricaster_data_link
@@ -51,7 +49,7 @@ class LiveLTMainGui(QMainWindow):
         # set keyboard focus policy
         self.setFocusPolicy(Qt.StrongFocus)
 
-        self.setWindowTitle('LiveLT Version 0.1')
+        self.setWindowTitle('LiveLT')
 
         self.name_index = 0
 
@@ -68,31 +66,45 @@ class LiveLTMainGui(QMainWindow):
 
         # create the vertical box layout
         self.veritcalLayout = QVBoxLayout(self.centralWidget)
+        self.veritcalLayout.addStretch()
 
-        # Tricaster IP Address Label
-        # self.tc_ip_label = QLabel('Tricaster IP Address:')
-        # self.veritcalLayout.addWidget(self.tc_ip_label)
-
-        # Tricaster IP textbox
-        # self.tc_ip_textbox = QLineEdit(self).setText(self.config['tricaster_ipaddr'])
-        # self.veritcalLayout.addWidget(self.tc_ip_textbox)
-
+        # Camera selection Layout
+        self.camera_selection_widget = QWidget()
+        self.camera_selection_layout = QHBoxLayout(self.camera_selection_widget)
         # camera selection label
         self.cameraLabel = QLabel('Select a Camera:')
-        self.veritcalLayout.addWidget(self.cameraLabel)
-
-        # camera selection
-        self.camera_selector = QComboBox()
-        self.camera_selector.addItems([camera.description() for camera in self.available_cameras])
-        self.camera_selector.setCurrentIndex(self.config['webcam_index'])
+        self.camera_selection_layout.addWidget(self.cameraLabel)
+        # camera selection dropdown
+        self.camera_selector_dd = QComboBox()
+        self.camera_selector_dd.addItems([camera.description() for camera in self.available_cameras])
+        self.camera_selector_dd.setCurrentIndex(self.config['webcam_index'])
         self.select_camera(index=self.config['webcam_index'])
-        self.camera_selector.currentIndexChanged.connect(self.select_camera)
-        self.veritcalLayout.addWidget(self.camera_selector)
+        self.camera_selector_dd.currentIndexChanged.connect(self.select_camera)
+        self.camera_selector_dd.setFixedWidth(400)
+        self.camera_selection_layout.addWidget(self.camera_selector_dd)
+        # Add layout to root window
+        self.veritcalLayout.addWidget(self.camera_selection_widget)
+
+        # Tricaster Settings Layout
+        self.tricaster_settings_widget = QWidget()
+        self.tricaster_settings_layout = QHBoxLayout(self.tricaster_settings_widget)
+        # Tricaster IP
+        self.tricaster_ip = QLabel(f'Tricaster IP: {self.config["tricaster_ipaddr"]}')
+        self.tricaster_settings_layout.addWidget(self.tricaster_ip)
+        # Configure Tricaster IP
+        self.configure_tc_ip = QPushButton('Change IP')
+        self.configure_tc_ip.clicked.connect(self.change_ip)
+        self.tricaster_settings_layout.addWidget(self.configure_tc_ip)
+        # Test connection
+        self.test_connection_button = QPushButton('Test Connection')
+        self.test_connection_button.clicked.connect(self.test_connection)
+        self.tricaster_settings_layout.addWidget(self.test_connection_button)
+        # add layout to root window
+        self.veritcalLayout.addWidget(self.tricaster_settings_widget)
 
         # Video Feed
         self.FeedLabel = QLabel('Select a camera from the dropdown menu above')
         self.FeedLabel.setAlignment(Qt.AlignCenter)
-        self.FeedLabel.setFixedSize(self.config['vf_dimensions'][0], self.config['vf_dimensions'][1])
         self.FeedLabel.setStyleSheet('Border: 1px solid black;')
         self.veritcalLayout.addWidget(self.FeedLabel)
 
@@ -115,7 +127,7 @@ class LiveLTMainGui(QMainWindow):
         self.nextButton = QPushButton('Next Name')
         self.nextButton.clicked.connect(self.next_name)
         self.nameButtonsLayout.addWidget(self.nextButton)
-
+        # add layout to root window
         self.veritcalLayout.addWidget(self.nameButtonsWidget)
 
         # Display Default
@@ -123,7 +135,7 @@ class LiveLTMainGui(QMainWindow):
         self.showDefault.clicked.connect(self.set_to_default)
         self.veritcalLayout.addWidget(self.showDefault)
 
-        # Status Bar (empty at first until connection established)
+        # Status Bar (placeholder until used later)
         self.statusBar().showMessage('')
 
     def add_name(self, name):
@@ -140,6 +152,14 @@ class LiveLTMainGui(QMainWindow):
     def export_config(self):
         with open(self.config_json, 'w') as j:
             json.dump(self.config, j)
+
+    def change_ip(self):
+        ip, okPressed = QInputDialog.getText(
+            self, 'Target IP Address', 'IP Address: ',
+            QLineEdit.Normal, self.config['tricaster_ipaddr'])
+        if okPressed:
+            self.config['tricaster_ipaddr'] = ip
+            self.tricaster_ip.setText(f'Tricaster IP: {self.config["tricaster_ipaddr"]}')
 
     def view_frame(self, Image):
         self.FeedLabel.setPixmap(QPixmap.fromImage(Image))
@@ -179,6 +199,10 @@ class LiveLTMainGui(QMainWindow):
     def set_to_default(self):
         self.display_name(captured_data[0])
 
+    def test_connection(self):
+        self.display_name(captured_data[0])
+        self.statusBar().showMessage(f'Connection established with Tricaster')
+
     def display_name(self, name):
         try:
             tricaster_response = tricaster_data_link(ip=self.config['tricaster_ipaddr'], data=name)
@@ -191,8 +215,9 @@ class LiveLTMainGui(QMainWindow):
             self.error_window(
                 message=f'''ERROR: {e}
                 
-                Please check your Tricaster IP address in settings.
-                Current IP is {self.config["tricaster_ipaddr"]}''')
+Please check your Tricaster IP address in settings.
+Current IP is {self.config["tricaster_ipaddr"]}''',
+                title='Connection Error')
 
     def error_window(self, title, message):
         msg = QMessageBox()
@@ -216,6 +241,7 @@ class LiveLTMainGui(QMainWindow):
 class ImageWorker(QThread):
     ImageUpdate = pyqtSignal(QImage)
     ListUpdate = pyqtSignal(object)
+
     def __init__(self, **kwargs):
         super().__init__()
         self.width, self.height = kwargs['vf_dimensions'][0], kwargs['vf_dimensions'][1]
