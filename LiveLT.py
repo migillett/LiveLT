@@ -24,6 +24,9 @@ from functions.TricasterDataLink import tricaster_data_link
 - options menu to change running config
 '''
 
+global captured_data
+captured_data = []
+
 
 class LiveLTMainGui(QMainWindow):
     def __init__(self):
@@ -31,8 +34,6 @@ class LiveLTMainGui(QMainWindow):
 
         self.current_dir = path.dirname(path.realpath(__file__))
         self.config_json = path.join(self.current_dir, 'config.json')
-
-        self.captured_data = []
 
         self.config = {
             'webcam_index': 0,
@@ -42,7 +43,7 @@ class LiveLTMainGui(QMainWindow):
         }
 
         self.loadConfig()
-        self.captured_data.append(self.config['default_slide'])
+        captured_data.append(self.config['default_slide'])
 
         # set keyboard focus policy
         self.setFocusPolicy(Qt.StrongFocus)
@@ -96,12 +97,12 @@ class LiveLTMainGui(QMainWindow):
         self.scannedNamesLabel = QLabel('Scanned Names:')
         self.veritcalLayout.addWidget(self.scannedNamesLabel)
         self.scannedNamesList = QListWidget()
-        self.scannedNamesList.insertItem(0, self.captured_data[0])
+        self.scannedNamesList.insertItem(0, captured_data[0])
         self.scannedNamesList.clicked.connect(self.select_name)
         self.veritcalLayout.addWidget(self.scannedNamesList)
 
         # Currently displayed name
-        self.name_label = QLabel(f'Currently Displaying: {self.captured_data[0]}')
+        self.name_label = QLabel(f'Currently Displaying: {captured_data[0]}')
         self.veritcalLayout.addWidget(self.name_label)
 
         # Create nested layout for next and previous buttons
@@ -122,6 +123,11 @@ class LiveLTMainGui(QMainWindow):
         self.showDefault = QPushButton('Display Default')
         self.showDefault.clicked.connect(self.set_to_default)
         self.veritcalLayout.addWidget(self.showDefault)
+
+    def add_name(self, name):
+        if captured_data[-1] != name:
+            captured_data.append(name)
+            self.updateNameList()
 
     def loadConfig(self):
         if path.exists(self.config_json):
@@ -154,34 +160,32 @@ class LiveLTMainGui(QMainWindow):
         self.display_name(item.text())
 
     def updateNameList(self, item):
-        new_index = len(self.captured_data) + 1
+        new_index = len(captured_data) + 1
         self.name_list.insertItem(new_index, item)
 
     def previous_name(self):
         if self.name_index != 0:
             self.name_index -= 1
-            self.display_name(self.captured_data[self.name_index])
+            self.display_name(captured_data[self.name_index])
 
     def next_name(self):
-        if self.name_index + 2 <= len(self.captured_data):
+        if self.name_index + 2 <= len(captured_data):
             self.name_index += 1
-            self.display_name(self.captured_data[self.name_index])
+            self.display_name(captured_data[self.name_index])
 
     def set_to_default(self):
-        self.display_name(self.captured_data[0])
+        self.display_name(captured_data[0])
 
     def display_name(self, name):
-        r = tricaster_data_link(ip=self.config['tricaster_ipaddr'], data=name)
-        if r == 200:
-            self.name_label.setText(f'Currently Displaying: {name}')
-        else:
-            self.error_window(message=f'ERROR {r}: unable to communicate with Tricaster')
+        try:
+            tricaster_data_link(ip=self.config['tricaster_ipaddr'], data=name)
+        except Exception as e:
+            self.error_window(message=f'ERROR: {e}', title='Connection Error')
 
     def error_window(self, title, message):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Critical)
         msg.setText(message)
-        msg.setInformativeText(message)
         msg.setWindowTitle(title)
         msg.exec_()
 
@@ -227,9 +231,8 @@ class LiveLTMainGui(QMainWindow):
 
                     data, points, _ = self.qrscan.detectAndDecode(frame)
                     if len(data) > 0:
-                        if data != LiveLTMainGui.captured_data[-1]:
-                            LiveLTMainGui.captured_data.append(data)
-                            LiveLTMainGui.update_name_list(data)
+                        if captured_data[-1] != data:
+                            captured_data.append(data)
                             self.confirm_audio()
 
         def stop(self):

@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from logging import exception
 import requests
 from os import path
 
@@ -20,10 +21,14 @@ def tricaster_data_link(ip, data='LiveLT', webkey='WebKey 01'):
 </shortcuts>'''
 
     url = f'http://{ip}:5952/v1/shortcut'
-    
+
     r = requests.post(url=url, data=payload, headers={"Content-Type": "text/xml"})
 
-    return r.status_code
+    if r.status_code != 200:
+        raise Exception(f'Connection Error: {r.status_code}')
+    else:
+        raise None
+
 
 if __name__ == '__main__':
     tricaster_data_link(ip = '192.168.1.10', data='Test Name')
