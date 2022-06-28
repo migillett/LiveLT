@@ -20,7 +20,7 @@ from functions.TricasterDataLink import tricaster_data_link
 
 '''
 ### TO DO LIST ###
-- options menu to change running config
+- add custom name dialog box
 '''
 
 global captured_data
