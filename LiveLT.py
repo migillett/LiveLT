@@ -4,6 +4,7 @@
 import sys
 from os import path
 import json
+import numpy as np
 
 # install using pip
 import cv2
@@ -14,19 +15,18 @@ from PyQt5.QtGui import *
 # sudo apt-get build-dep qtmultimedia5-dev
 from PyQt5.QtMultimedia import *
 from PyQt5.QtMultimediaWidgets import *
+from urllib3 import HTTPConnectionPool
 
 # Local
 from functions.TricasterDataLink import tricaster_data_link
 
 '''
 ### TO DO LIST ###
-- add in a way to have text auto-scale on lower thirds (long names)
 - options menu to change running config
 '''
 
 global captured_data
 captured_data = []
-
 
 class LiveLTMainGui(QMainWindow):
     def __init__(self):
@@ -42,8 +42,11 @@ class LiveLTMainGui(QMainWindow):
             'tricaster_ipaddr': ''
         }
 
-        self.loadConfig()
+        self.load_config()
         captured_data.append(self.config['default_slide'])
+
+        # self.captured_data =[]
+        # self.captured_data.append(self.config['default_slide'])
 
         # set keyboard focus policy
         self.setFocusPolicy(Qt.StrongFocus)
@@ -98,12 +101,8 @@ class LiveLTMainGui(QMainWindow):
         self.veritcalLayout.addWidget(self.scannedNamesLabel)
         self.scannedNamesList = QListWidget()
         self.scannedNamesList.insertItem(0, captured_data[0])
-        self.scannedNamesList.clicked.connect(self.select_name)
+        self.scannedNamesList.itemClicked.connect(self.select_name)
         self.veritcalLayout.addWidget(self.scannedNamesList)
-
-        # Currently displayed name
-        self.name_label = QLabel(f'Currently Displaying: {captured_data[0]}')
-        self.veritcalLayout.addWidget(self.name_label)
 
         # Create nested layout for next and previous buttons
         self.nameButtonsWidget = QWidget()
@@ -124,22 +123,25 @@ class LiveLTMainGui(QMainWindow):
         self.showDefault.clicked.connect(self.set_to_default)
         self.veritcalLayout.addWidget(self.showDefault)
 
+        # Status Bar (empty at first until connection established)
+        self.statusBar().showMessage('')
+
     def add_name(self, name):
         if captured_data[-1] != name:
             captured_data.append(name)
-            self.updateNameList()
+            self.update_name_list()
 
-    def loadConfig(self):
+    def load_config(self):
         if path.exists(self.config_json):
             with open(self.config_json, 'r') as j:
                 for key, value in json.load(j).items():
                     self.config[key] = value
 
-    def exportConfig(self):
+    def export_config(self):
         with open(self.config_json, 'w') as j:
             json.dump(self.config, j)
 
-    def viewFrame(self, Image):
+    def view_frame(self, Image):
         self.FeedLabel.setPixmap(QPixmap.fromImage(Image))
 
     def stopCamera(self):
@@ -151,17 +153,18 @@ class LiveLTMainGui(QMainWindow):
     def select_camera(self, index):
         self.stopCamera()
         self.config['webcam_index'] = index
-        self.worker = self.ImageWorker(**self.config)
+        self.worker = ImageWorker(**self.config)
         self.worker.start()
-        self.worker.ImageUpdate.connect(self.viewFrame)
+        self.worker.ImageUpdate.connect(self.view_frame)
+        self.worker.ListUpdate.connect(self.update_name_list)
 
-    def select_name(self):
-        item = self.name_list.currentIndex()
-        self.display_name(item.text())
+    def select_name(self, clicked_item):
+        self.name_index = self.scannedNamesList.currentRow()
+        self.display_name(clicked_item.text())
 
-    def updateNameList(self, item):
+    def update_name_list(self, item):
         new_index = len(captured_data) + 1
-        self.name_list.insertItem(new_index, item)
+        self.scannedNamesList.insertItem(new_index, item)
 
     def previous_name(self):
         if self.name_index != 0:
@@ -178,15 +181,24 @@ class LiveLTMainGui(QMainWindow):
 
     def display_name(self, name):
         try:
-            tricaster_data_link(ip=self.config['tricaster_ipaddr'], data=name)
+            tricaster_response = tricaster_data_link(ip=self.config['tricaster_ipaddr'], data=name)
+            if tricaster_response == 200:
+                self.statusBar().showMessage(f'Tricaster Confirmed: {name}')
+            else:
+                self.error_window(message=f'ERROR: {tricaster_response}\n\nUnable to connect to Tricaster')
+
         except Exception as e:
-            self.error_window(message=f'ERROR: {e}', title='Connection Error')
+            self.error_window(
+                message=f'''ERROR: {e}
+                
+                Please check your Tricaster IP address in settings.
+                Current IP is {self.config["tricaster_ipaddr"]}''')
 
     def error_window(self, title, message):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Critical)
-        msg.setText(message)
         msg.setWindowTitle(title)
+        msg.setText(message)
         msg.exec_()
 
     def keyPressEvent(self, event):
@@ -198,46 +210,49 @@ class LiveLTMainGui(QMainWindow):
             self.set_to_default()
 
     def closeEvent(self, event):
-        self.exportConfig()
+        self.export_config()
 
-    class ImageWorker(QThread):
-        ImageUpdate = pyqtSignal(QImage)
-        def __init__(self, **kwargs):
-            super().__init__()
-            self.width, self.height = kwargs['vf_dimensions'][0], kwargs['vf_dimensions'][1]
-            self.capture = cv2.VideoCapture(kwargs['webcam_index'])
-            self.ThreadActive = True
 
-            self.player = QMediaPlayer()
+class ImageWorker(QThread):
+    ImageUpdate = pyqtSignal(QImage)
+    ListUpdate = pyqtSignal(object)
+    def __init__(self, **kwargs):
+        super().__init__()
+        self.width, self.height = kwargs['vf_dimensions'][0], kwargs['vf_dimensions'][1]
+        self.capture = cv2.VideoCapture(kwargs['webcam_index'])
+        self.ThreadActive = True
 
-            self.qrscan = cv2.QRCodeDetector()
+        self.player = QMediaPlayer()
 
-        def confirm_audio(self):
-            url = QUrl.fromLocalFile(path.join(path.dirname(path.realpath(__file__)), 'assets', 'cork.mp3'))
-            content = QMediaContent(url)
+        self.qrscan = cv2.QRCodeDetector()
 
-            self.player.setMedia(content)
-            self.player.setVolume(100)
-            self.player.play()
+    def confirm_audio(self):
+        url = QUrl.fromLocalFile(path.join(path.dirname(path.realpath(__file__)), 'assets', 'cork.mp3'))
+        content = QMediaContent(url)
 
-        def run(self):
-            while self.ThreadActive:
-                ret, frame = self.capture.read()
-                if ret:
-                    Image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    ConvertToQtFormat = QImage(Image.data, Image.shape[1], Image.shape[0], QImage.Format_RGB888)
-                    Pic = ConvertToQtFormat.scaled(self.width, self.height, Qt.KeepAspectRatio)
-                    self.ImageUpdate.emit(Pic)
+        self.player.setMedia(content)
+        self.player.setVolume(100)
+        self.player.play()
 
-                    data, points, _ = self.qrscan.detectAndDecode(frame)
-                    if len(data) > 0:
-                        if captured_data[-1] != data:
-                            captured_data.append(data)
-                            self.confirm_audio()
+    def run(self):
+        while self.ThreadActive:
+            ret, frame = self.capture.read()
+            if ret:
+                Image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                ConvertToQtFormat = QImage(Image.data, Image.shape[1], Image.shape[0], QImage.Format_RGB888)
+                Pic = ConvertToQtFormat.scaled(self.width, self.height, Qt.KeepAspectRatio)
+                self.ImageUpdate.emit(Pic)
 
-        def stop(self):
-            self.ThreadActive = False
-            self.quit()
+                data, points, _ = self.qrscan.detectAndDecode(frame)
+                if len(data) > 0:
+                    if captured_data[-1] != data:
+                        self.ListUpdate.emit(data)
+                        captured_data.append(data)
+                        self.confirm_audio()
+
+    def stop(self):
+        self.ThreadActive = False
+        self.quit()
 
 
 if __name__ == '__main__':
