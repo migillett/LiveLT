@@ -20,7 +20,7 @@ from functions.TricasterDataLink import tricaster_data_link
 
 '''
 ### TO DO LIST ###
-- add custom name dialog box
+- bug test this business
 '''
 
 global captured_data
@@ -42,9 +42,6 @@ class LiveLTMainGui(QMainWindow):
 
         self.load_config()
         captured_data.append(self.config['default_slide'])
-
-        # self.captured_data =[]
-        # self.captured_data.append(self.config['default_slide'])
 
         # set keyboard focus policy
         self.setFocusPolicy(Qt.StrongFocus)
@@ -68,7 +65,7 @@ class LiveLTMainGui(QMainWindow):
         self.veritcalLayout = QVBoxLayout(self.centralWidget)
         self.veritcalLayout.addStretch()
 
-        # Camera selection Layout
+        # Camera selection sub-layout
         self.camera_selection_widget = QWidget()
         self.camera_selection_layout = QHBoxLayout(self.camera_selection_widget)
         # camera selection label
@@ -82,10 +79,10 @@ class LiveLTMainGui(QMainWindow):
         self.camera_selector_dd.currentIndexChanged.connect(self.select_camera)
         self.camera_selector_dd.setFixedWidth(400)
         self.camera_selection_layout.addWidget(self.camera_selector_dd)
-        # Add layout to root window
+        # Add sub-layout to root window
         self.veritcalLayout.addWidget(self.camera_selection_widget)
 
-        # Tricaster Settings Layout
+        # Tricaster Settings sub-layout
         self.tricaster_settings_widget = QWidget()
         self.tricaster_settings_layout = QHBoxLayout(self.tricaster_settings_widget)
         # Tricaster IP
@@ -99,7 +96,7 @@ class LiveLTMainGui(QMainWindow):
         self.test_connection_button = QPushButton('Test Connection')
         self.test_connection_button.clicked.connect(self.test_connection)
         self.tricaster_settings_layout.addWidget(self.test_connection_button)
-        # add layout to root window
+        # add sub-layout to root window
         self.veritcalLayout.addWidget(self.tricaster_settings_widget)
 
         # Video Feed
@@ -108,15 +105,21 @@ class LiveLTMainGui(QMainWindow):
         self.FeedLabel.setStyleSheet('Border: 1px solid black;')
         self.veritcalLayout.addWidget(self.FeedLabel)
 
-        # Selectable list of names scanned
+        # Add custom name button
+        self.add_custom_button = QPushButton('Add Custom Name')
+        self.add_custom_button.clicked.connect(self.custom_name)
+        self.veritcalLayout.addWidget(self.add_custom_button)
+
+        # Label for scanned names
         self.scannedNamesLabel = QLabel('Scanned Names:')
         self.veritcalLayout.addWidget(self.scannedNamesLabel)
+        # list of scanned names
         self.scannedNamesList = QListWidget()
         self.scannedNamesList.insertItem(0, captured_data[0])
         self.scannedNamesList.itemClicked.connect(self.select_name)
         self.veritcalLayout.addWidget(self.scannedNamesList)
 
-        # Create nested layout for next and previous buttons
+        # Create sub-layout for next and previous buttons
         self.nameButtonsWidget = QWidget()
         self.nameButtonsLayout = QHBoxLayout(self.nameButtonsWidget)
         # Previous Name
@@ -127,21 +130,16 @@ class LiveLTMainGui(QMainWindow):
         self.nextButton = QPushButton('Next Name')
         self.nextButton.clicked.connect(self.next_name)
         self.nameButtonsLayout.addWidget(self.nextButton)
-        # add layout to root window
+        # add sub-layout to root window
         self.veritcalLayout.addWidget(self.nameButtonsWidget)
 
-        # Display Default
+        # Display Default in emergencies
         self.showDefault = QPushButton('Display Default')
         self.showDefault.clicked.connect(self.set_to_default)
         self.veritcalLayout.addWidget(self.showDefault)
 
-        # Status Bar (placeholder until used later)
+        # Status Bar for program updates (placeholder until used later)
         self.statusBar().showMessage('')
-
-    def add_name(self, name):
-        if captured_data[-1] != name:
-            captured_data.append(name)
-            self.update_name_list()
 
     def load_config(self):
         if path.exists(self.config_json):
@@ -161,17 +159,24 @@ class LiveLTMainGui(QMainWindow):
             self.config['tricaster_ipaddr'] = ip
             self.tricaster_ip.setText(f'Tricaster IP: {self.config["tricaster_ipaddr"]}')
 
+    def custom_name(self):
+        name, okPressed = QInputDialog.getText(
+            self, 'Add Name', 'Name: ', QLineEdit.Normal, '')
+        if okPressed:
+            captured_data.append(name)
+            self.update_name_list(name)
+
     def view_frame(self, Image):
         self.FeedLabel.setPixmap(QPixmap.fromImage(Image))
 
-    def stopCamera(self):
+    def stop_camera(self):
         try:
             self.worker.stop()
         except AttributeError: # if the camera isn't open, ignore the error it throws
             pass
 
     def select_camera(self, index):
-        self.stopCamera()
+        self.stop_camera()
         self.config['webcam_index'] = index
         self.worker = ImageWorker(**self.config)
         self.worker.start()
