@@ -1,6 +1,8 @@
 # LiveLT
 This Python script allows you to scan QRCodes and transmit them directly to a NewTek Tricaster via their DataLink feature. The script uses PyQt5 for the main GUI and opencv-python for capturing webcam input and QR decoding.
 
+This program is meant to help with Graduation ceremonies. What you'd do is give every student a piece of paper with their name and their custom QR code on it. They walk up to the stage, scan the QR code, then give their piece of paper to the reader. Someone is off to the side running this application and sends the name over the network to the techncial director running the Tricaster. The TD will be the one in charge of putting the lower thirds on and off of program.
+
 ### Dependencies
 This script requires Python 3.10 or higher. You'll need to install a few dependencies as well by running `pip3 install -r ./requirements.txt` once you've cloned the repo.
 
@@ -30,7 +32,13 @@ This script requires Python 3.10 or higher. You'll need to install a few depende
 12. If you encounter an error, you can click the "Display Default" button.
 
 ### Tips and Tricks
-The program saves its running config once you close it out. You can edit this by opening the `config.json` file in the repo folder. Most things are self-explanatory, but don't go too crazy.
+- The Tricaster and the machine running this software MUST be on the same network. Ideally, plugged into the same network switch.
+
+- The program saves its running config once you close it out. You can edit this by opening the `config.json` file in the repo folder. Most things are self-explanatory, but don't go too crazy.
+
+- You can find a script to make QR Codes en-masse inside the functions folder. You can feed it a CSV file with `FirstName` and `LastName` columns for student names. It'll go through all of them and create QR codes. This is testing for right now and I plan to add a GUI for this as well when the time comes.
 
 ### Planned Updates
 - Create an executable file for ease of transport
+- Bug testing
+- GUI to create QR codes en-masse
