@@ -22,7 +22,3 @@ def csv_to_qr(filepath):
                 print(f'Exported: {filename}')
 
                 index += 1
-
-
-if __name__ == "__main__":
-    csv_to_qr('/Users/michael.gillett/Desktop/names.csv')
