@@ -1,4 +1,7 @@
 # LiveLT
+
+![LiveLT](https://github.com/migillett/LiveLT/blob/main/assets/livelt_screenshot.png)
+
 This Python script allows you to scan QRCodes and transmit them directly to a NewTek Tricaster via their DataLink feature. The script uses PyQt5 for the main GUI and opencv-python for capturing webcam input and QR decoding.
 
 This program is meant to help with Graduation ceremonies. What you'd do is give every student a piece of paper with their name and their custom QR code on it. They walk up to the stage, scan the QR code, then give their piece of paper to the reader. Someone is off to the side running this application and sends the name over the network to the techncial director running the Tricaster. The TD will be the one in charge of putting the lower thirds on and off of program.
