@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from http.client import InvalidURL
 from logging import exception
 import requests
 from os import path
@@ -22,12 +23,12 @@ def tricaster_data_link(ip, data='LiveLT', webkey='WebKey 01'):
 
     url = f'http://{ip}:5952/v1/shortcut'
 
-    r = requests.post(url=url, data=payload, headers={"Content-Type": "text/xml"})
-
-    if r.status_code != 200:
-        raise Exception(f'Connection Error: {r.status_code}')
-    else:
-        raise None
+    try:
+        r = requests.post(url=url, data=payload, headers={"Content-Type": "text/xml"}, timeout=1)
+        return r.status_code
+    
+    except Exception as e:
+        raise e
 
 
 if __name__ == '__main__':

@@ -20,13 +20,11 @@ from functions.TricasterDataLink import tricaster_data_link
 
 '''
 ### TO DO LIST ###
-- add in a way to have text auto-scale on lower thirds (long names)
-- options menu to change running config
+- bug test this business
 '''
 
 global captured_data
 captured_data = []
-
 
 class LiveLTMainGui(QMainWindow):
     def __init__(self):
@@ -42,13 +40,13 @@ class LiveLTMainGui(QMainWindow):
             'tricaster_ipaddr': ''
         }
 
-        self.loadConfig()
+        self.load_config()
         captured_data.append(self.config['default_slide'])
 
         # set keyboard focus policy
         self.setFocusPolicy(Qt.StrongFocus)
 
-        self.setWindowTitle('LiveLT Version 0.1')
+        self.setWindowTitle('LiveLT')
 
         self.name_index = 0
 
@@ -65,47 +63,63 @@ class LiveLTMainGui(QMainWindow):
 
         # create the vertical box layout
         self.veritcalLayout = QVBoxLayout(self.centralWidget)
+        self.veritcalLayout.addStretch()
 
-        # Tricaster IP Address Label
-        # self.tc_ip_label = QLabel('Tricaster IP Address:')
-        # self.veritcalLayout.addWidget(self.tc_ip_label)
-
-        # Tricaster IP textbox
-        # self.tc_ip_textbox = QLineEdit(self).setText(self.config['tricaster_ipaddr'])
-        # self.veritcalLayout.addWidget(self.tc_ip_textbox)
-
+        # Camera selection sub-layout
+        self.camera_selection_widget = QWidget()
+        self.camera_selection_layout = QHBoxLayout(self.camera_selection_widget)
         # camera selection label
         self.cameraLabel = QLabel('Select a Camera:')
-        self.veritcalLayout.addWidget(self.cameraLabel)
-
-        # camera selection
-        self.camera_selector = QComboBox()
-        self.camera_selector.addItems([camera.description() for camera in self.available_cameras])
-        self.camera_selector.setCurrentIndex(self.config['webcam_index'])
+        self.camera_selection_layout.addWidget(self.cameraLabel)
+        # camera selection dropdown
+        self.camera_selector_dd = QComboBox()
+        self.camera_selector_dd.addItems([camera.description() for camera in self.available_cameras])
+        self.camera_selector_dd.setCurrentIndex(self.config['webcam_index'])
         self.select_camera(index=self.config['webcam_index'])
-        self.camera_selector.currentIndexChanged.connect(self.select_camera)
-        self.veritcalLayout.addWidget(self.camera_selector)
+        self.camera_selector_dd.currentIndexChanged.connect(self.select_camera)
+        self.camera_selector_dd.setFixedWidth(400)
+        self.camera_selection_layout.addWidget(self.camera_selector_dd)
+        # Add sub-layout to root window
+        self.veritcalLayout.addWidget(self.camera_selection_widget)
+
+        # Tricaster Settings sub-layout
+        self.tricaster_settings_widget = QWidget()
+        self.tricaster_settings_layout = QHBoxLayout(self.tricaster_settings_widget)
+        # Tricaster IP
+        self.tricaster_ip = QLabel(f'Tricaster IP: {self.config["tricaster_ipaddr"]}')
+        self.tricaster_settings_layout.addWidget(self.tricaster_ip)
+        # Configure Tricaster IP
+        self.configure_tc_ip = QPushButton('Change IP')
+        self.configure_tc_ip.clicked.connect(self.change_ip)
+        self.tricaster_settings_layout.addWidget(self.configure_tc_ip)
+        # Test connection
+        self.test_connection_button = QPushButton('Test Connection')
+        self.test_connection_button.clicked.connect(self.test_connection)
+        self.tricaster_settings_layout.addWidget(self.test_connection_button)
+        # add sub-layout to root window
+        self.veritcalLayout.addWidget(self.tricaster_settings_widget)
 
         # Video Feed
         self.FeedLabel = QLabel('Select a camera from the dropdown menu above')
         self.FeedLabel.setAlignment(Qt.AlignCenter)
-        self.FeedLabel.setFixedSize(self.config['vf_dimensions'][0], self.config['vf_dimensions'][1])
         self.FeedLabel.setStyleSheet('Border: 1px solid black;')
         self.veritcalLayout.addWidget(self.FeedLabel)
 
-        # Selectable list of names scanned
+        # Add custom name button
+        self.add_custom_button = QPushButton('Add Custom Name')
+        self.add_custom_button.clicked.connect(self.custom_name)
+        self.veritcalLayout.addWidget(self.add_custom_button)
+
+        # Label for scanned names
         self.scannedNamesLabel = QLabel('Scanned Names:')
         self.veritcalLayout.addWidget(self.scannedNamesLabel)
+        # list of scanned names
         self.scannedNamesList = QListWidget()
         self.scannedNamesList.insertItem(0, captured_data[0])
-        self.scannedNamesList.clicked.connect(self.select_name)
+        self.scannedNamesList.itemClicked.connect(self.select_name)
         self.veritcalLayout.addWidget(self.scannedNamesList)
 
-        # Currently displayed name
-        self.name_label = QLabel(f'Currently Displaying: {captured_data[0]}')
-        self.veritcalLayout.addWidget(self.name_label)
-
-        # Create nested layout for next and previous buttons
+        # Create sub-layout for next and previous buttons
         self.nameButtonsWidget = QWidget()
         self.nameButtonsLayout = QHBoxLayout(self.nameButtonsWidget)
         # Previous Name
@@ -116,52 +130,66 @@ class LiveLTMainGui(QMainWindow):
         self.nextButton = QPushButton('Next Name')
         self.nextButton.clicked.connect(self.next_name)
         self.nameButtonsLayout.addWidget(self.nextButton)
-
+        # add sub-layout to root window
         self.veritcalLayout.addWidget(self.nameButtonsWidget)
 
-        # Display Default
+        # Display Default in emergencies
         self.showDefault = QPushButton('Display Default')
         self.showDefault.clicked.connect(self.set_to_default)
         self.veritcalLayout.addWidget(self.showDefault)
 
-    def add_name(self, name):
-        if captured_data[-1] != name:
-            captured_data.append(name)
-            self.updateNameList()
+        # Status Bar for program updates (placeholder until used later)
+        self.statusBar().showMessage('')
 
-    def loadConfig(self):
+    def load_config(self):
         if path.exists(self.config_json):
             with open(self.config_json, 'r') as j:
                 for key, value in json.load(j).items():
                     self.config[key] = value
 
-    def exportConfig(self):
+    def export_config(self):
         with open(self.config_json, 'w') as j:
             json.dump(self.config, j)
 
-    def viewFrame(self, Image):
+    def change_ip(self):
+        ip, okPressed = QInputDialog.getText(
+            self, 'Target IP Address', 'IP Address: ',
+            QLineEdit.Normal, self.config['tricaster_ipaddr'])
+        if okPressed:
+            self.config['tricaster_ipaddr'] = ip
+            self.tricaster_ip.setText(f'Tricaster IP: {self.config["tricaster_ipaddr"]}')
+
+    def custom_name(self):
+        name, okPressed = QInputDialog.getText(
+            self, 'Add Name', 'Name: ', QLineEdit.Normal, '')
+        if okPressed:
+            captured_data.append(name)
+            self.update_name_list(name)
+
+    def view_frame(self, Image):
         self.FeedLabel.setPixmap(QPixmap.fromImage(Image))
 
-    def stopCamera(self):
+    def stop_camera(self):
         try:
             self.worker.stop()
         except AttributeError: # if the camera isn't open, ignore the error it throws
             pass
 
     def select_camera(self, index):
-        self.stopCamera()
+        self.stop_camera()
         self.config['webcam_index'] = index
-        self.worker = self.ImageWorker(**self.config)
+        self.worker = ImageWorker(**self.config)
         self.worker.start()
-        self.worker.ImageUpdate.connect(self.viewFrame)
+        self.worker.ImageUpdate.connect(self.view_frame)
+        self.worker.ListUpdate.connect(self.update_name_list)
 
-    def select_name(self):
-        item = self.name_list.currentIndex()
-        self.display_name(item.text())
+    def select_name(self, clicked_item):
+        self.name_index = self.scannedNamesList.currentRow()
+        self.display_name(clicked_item.text())
 
-    def updateNameList(self, item):
+    def update_name_list(self, item):
         new_index = len(captured_data) + 1
-        self.name_list.insertItem(new_index, item)
+        self.scannedNamesList.insertItem(new_index, item)
 
     def previous_name(self):
         if self.name_index != 0:
@@ -176,17 +204,31 @@ class LiveLTMainGui(QMainWindow):
     def set_to_default(self):
         self.display_name(captured_data[0])
 
+    def test_connection(self):
+        self.display_name(captured_data[0])
+        self.statusBar().showMessage(f'Connection established with Tricaster')
+
     def display_name(self, name):
         try:
-            tricaster_data_link(ip=self.config['tricaster_ipaddr'], data=name)
+            tricaster_response = tricaster_data_link(ip=self.config['tricaster_ipaddr'], data=name)
+            if tricaster_response == 200:
+                self.statusBar().showMessage(f'Tricaster Confirmed: {name}')
+            else:
+                self.error_window(message=f'ERROR: {tricaster_response}\n\nUnable to connect to Tricaster')
+
         except Exception as e:
-            self.error_window(message=f'ERROR: {e}', title='Connection Error')
+            self.error_window(
+                message=f'''ERROR: {e}
+                
+Please check your Tricaster IP address in settings.
+Current IP is {self.config["tricaster_ipaddr"]}''',
+                title='Connection Error')
 
     def error_window(self, title, message):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Critical)
-        msg.setText(message)
         msg.setWindowTitle(title)
+        msg.setText(message)
         msg.exec_()
 
     def keyPressEvent(self, event):
@@ -198,46 +240,50 @@ class LiveLTMainGui(QMainWindow):
             self.set_to_default()
 
     def closeEvent(self, event):
-        self.exportConfig()
+        self.export_config()
 
-    class ImageWorker(QThread):
-        ImageUpdate = pyqtSignal(QImage)
-        def __init__(self, **kwargs):
-            super().__init__()
-            self.width, self.height = kwargs['vf_dimensions'][0], kwargs['vf_dimensions'][1]
-            self.capture = cv2.VideoCapture(kwargs['webcam_index'])
-            self.ThreadActive = True
 
-            self.player = QMediaPlayer()
+class ImageWorker(QThread):
+    ImageUpdate = pyqtSignal(QImage)
+    ListUpdate = pyqtSignal(object)
 
-            self.qrscan = cv2.QRCodeDetector()
+    def __init__(self, **kwargs):
+        super().__init__()
+        self.width, self.height = kwargs['vf_dimensions'][0], kwargs['vf_dimensions'][1]
+        self.capture = cv2.VideoCapture(kwargs['webcam_index'])
+        self.ThreadActive = True
 
-        def confirm_audio(self):
-            url = QUrl.fromLocalFile(path.join(path.dirname(path.realpath(__file__)), 'assets', 'cork.mp3'))
-            content = QMediaContent(url)
+        self.player = QMediaPlayer()
 
-            self.player.setMedia(content)
-            self.player.setVolume(100)
-            self.player.play()
+        self.qrscan = cv2.QRCodeDetector()
 
-        def run(self):
-            while self.ThreadActive:
-                ret, frame = self.capture.read()
-                if ret:
-                    Image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    ConvertToQtFormat = QImage(Image.data, Image.shape[1], Image.shape[0], QImage.Format_RGB888)
-                    Pic = ConvertToQtFormat.scaled(self.width, self.height, Qt.KeepAspectRatio)
-                    self.ImageUpdate.emit(Pic)
+    def confirm_audio(self):
+        url = QUrl.fromLocalFile(path.join(path.dirname(path.realpath(__file__)), 'assets', 'cork.mp3'))
+        content = QMediaContent(url)
 
-                    data, points, _ = self.qrscan.detectAndDecode(frame)
-                    if len(data) > 0:
-                        if captured_data[-1] != data:
-                            captured_data.append(data)
-                            self.confirm_audio()
+        self.player.setMedia(content)
+        self.player.setVolume(100)
+        self.player.play()
 
-        def stop(self):
-            self.ThreadActive = False
-            self.quit()
+    def run(self):
+        while self.ThreadActive:
+            ret, frame = self.capture.read()
+            if ret:
+                Image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                ConvertToQtFormat = QImage(Image.data, Image.shape[1], Image.shape[0], QImage.Format_RGB888)
+                Pic = ConvertToQtFormat.scaled(self.width, self.height, Qt.KeepAspectRatio)
+                self.ImageUpdate.emit(Pic)
+
+                data, points, _ = self.qrscan.detectAndDecode(frame)
+                if len(data) > 0:
+                    if captured_data[-1] != data:
+                        self.ListUpdate.emit(data)
+                        captured_data.append(data)
+                        self.confirm_audio()
+
+    def stop(self):
+        self.ThreadActive = False
+        self.quit()
 
 
 if __name__ == '__main__':
