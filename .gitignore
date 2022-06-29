@@ -153,5 +153,4 @@ cython_debug/
 
 .DS_Store
 config.json
-*.png
 *.csv
