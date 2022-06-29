@@ -1,9 +1,8 @@
 #!/usr/bin/python3
 
-from http.client import InvalidURL
-from logging import exception
 import requests
 from os import path
+import xml.etree.ElementTree as ET
 
 # This program connects to a NewTek Tricaster through it's DataLink feature
 # This feature is only available on Advanced Edition Tricasters
@@ -12,24 +11,26 @@ from os import path
     # 2. You'll need to setup a lower third template with %webkey 01% in a text field
 
 
-def tricaster_data_link(ip, data='LiveLT', webkey='WebKey 01'):
+def tricaster_data_link(ip, name='LiveLT', webkey='WebKey 01'):
 
-    payload = f'''<shortcuts>
-    <shortcut name="datalink_set">
-    <entry key="key" value="{webkey}" />
-    <entry key="value" value="{data}" />
-    </shortcut>
-</shortcuts>'''
-
-    url = f'http://{ip}:5952/v1/shortcut'
+    # create XML file using user entries
+    xml_root = ET.Element('shortcuts')
+    shortcut_element = ET.SubElement(xml_root, 'shortcut')
+    shortcut_element.set('name', 'datalink_set')
+    ET.SubElement(shortcut_element, 'entry', key='key', value=webkey)
+    ET.SubElement(shortcut_element, 'entry', key='value', value=name)
 
     try:
-        r = requests.post(url=url, data=payload, headers={"Content-Type": "text/xml"}, timeout=1)
-        return r.status_code
+        url = f'http://{ip}:5952/v1/shortcut'
+        r = requests.post(url=url, data=ET.tostring(xml_root), headers={"Content-Type": "text/xml"}, timeout=1)
+        return r.status_code, name
     
     except Exception as e:
         raise e
 
 
 if __name__ == '__main__':
-    tricaster_data_link(ip = '192.168.1.10', data='Test Name')
+    print('Testing tricaster connection...')
+    ip = str(input('Input Tricaster IP: '))
+    response, name = tricaster_data_link(ip=ip, name='LiveLT')
+    print(f'Tricaster responded with code: {response}\nCurrently showing: {name}')

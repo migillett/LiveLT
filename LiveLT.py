@@ -105,6 +105,11 @@ class LiveLTMainGui(QMainWindow):
         self.FeedLabel.setStyleSheet('Border: 1px solid black;')
         self.veritcalLayout.addWidget(self.FeedLabel)
 
+        # change default slide button
+        self.change_default_name_button = QPushButton('Change Default Name')
+        self.change_default_name_button.clicked.connect(self.set_default_name)
+        self.veritcalLayout.addWidget(self.change_default_name_button)
+
         # Add custom name button
         self.add_custom_button = QPushButton('Add Custom Name')
         self.add_custom_button.clicked.connect(self.custom_name)
@@ -166,6 +171,15 @@ class LiveLTMainGui(QMainWindow):
             captured_data.append(name)
             self.update_name_list(name)
 
+    def set_default_name(self):
+        name, okPressed = QInputDialog.getText(
+            self, 'Change Default Name', 'Default Name: ',
+            QLineEdit.Normal, self.config['default_slide'])
+        if okPressed:
+            self.config['default_slide'] = name
+            captured_data[0] = self.config['default_slide']
+            self.scannedNamesList.item(0).setText(self.config['default_slide'])
+
     def view_frame(self, Image):
         self.FeedLabel.setPixmap(QPixmap.fromImage(Image))
 
@@ -210,9 +224,9 @@ class LiveLTMainGui(QMainWindow):
 
     def display_name(self, name):
         try:
-            tricaster_response = tricaster_data_link(ip=self.config['tricaster_ipaddr'], data=name)
+            tricaster_response, displayed_data = tricaster_data_link(ip=self.config['tricaster_ipaddr'], name=name)
             if tricaster_response == 200:
-                self.statusBar().showMessage(f'Tricaster Confirmed: {name}')
+                self.statusBar().showMessage(f'Tricaster Confirmed: {displayed_data}')
             else:
                 self.error_window(message=f'ERROR: {tricaster_response}\n\nUnable to connect to Tricaster')
 
