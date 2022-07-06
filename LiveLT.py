@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+# Written by Michael Gillett, 2022
+
 # built-in
 import sys
 from os import path
@@ -29,6 +31,8 @@ captured_data = []
 class LiveLTMainGui(QMainWindow):
     def __init__(self):
         super(LiveLTMainGui, self).__init__()
+
+        self.player = QMediaPlayer()
 
         self.current_dir = path.dirname(path.realpath(__file__))
         self.config_json = path.join(self.current_dir, 'config.json')
@@ -116,13 +120,13 @@ class LiveLTMainGui(QMainWindow):
         self.veritcalLayout.addWidget(self.add_custom_button)
 
         # Label for scanned names
-        self.scannedNamesLabel = QLabel('Scanned Names:')
-        self.veritcalLayout.addWidget(self.scannedNamesLabel)
+        self.scanned_names_label = QLabel('Scanned Names:')
+        self.veritcalLayout.addWidget(self.scanned_names_label)
         # list of scanned names
-        self.scannedNamesList = QListWidget()
-        self.scannedNamesList.insertItem(0, captured_data[0])
-        self.scannedNamesList.itemClicked.connect(self.select_name)
-        self.veritcalLayout.addWidget(self.scannedNamesList)
+        self.scanned_names_list = QListWidget()
+        self.scanned_names_list.insertItem(0, captured_data[0])
+        self.scanned_names_list.itemClicked.connect(self.select_name)
+        self.veritcalLayout.addWidget(self.scanned_names_list)
 
         # Create sub-layout for next and previous buttons
         self.nameButtonsWidget = QWidget()
@@ -140,7 +144,7 @@ class LiveLTMainGui(QMainWindow):
 
         # Display Default in emergencies
         self.showDefault = QPushButton('Display Default')
-        self.showDefault.clicked.connect(self.set_to_default)
+        self.showDefault.clicked.connect(self.display_name)
         self.veritcalLayout.addWidget(self.showDefault)
 
         # Status Bar for program updates (placeholder until used later)
@@ -198,33 +202,36 @@ class LiveLTMainGui(QMainWindow):
         self.worker.ListUpdate.connect(self.update_name_list)
 
     def select_name(self, clicked_item):
-        self.name_index = self.scannedNamesList.currentRow()
-        self.display_name(clicked_item.text())
+        self.name_index = self.scanned_names_list.currentRow()
+        self.display_name(self.name_index)
 
     def update_name_list(self, item):
-        new_index = len(captured_data) + 1
-        self.scannedNamesList.insertItem(new_index, item)
+        # get max last in list
+        last_item = self.scanned_names_list.count() - 1 
+        if item != self.scanned_names_list.item(last_item).text():
+            self.scanned_names_list.insertItem(self.scanned_names_list.count(), item)
+            self.confirm_audio()
 
     def previous_name(self):
         if self.name_index != 0:
             self.name_index -= 1
-            self.display_name(captured_data[self.name_index])
+            self.display_name(self.name_index)
 
     def next_name(self):
-        if self.name_index + 2 <= len(captured_data):
+        if self.name_index + 1 < self.scanned_names_list.count():
             self.name_index += 1
-            self.display_name(captured_data[self.name_index])
-
-    def set_to_default(self):
-        self.display_name(captured_data[0])
+            self.display_name(self.name_index)
 
     def test_connection(self):
-        self.display_name(captured_data[0])
+        self.display_name()
         self.statusBar().showMessage(f'Connection established with Tricaster')
 
-    def display_name(self, name):
+    def display_name(self, index=0):
         try:
             tricaster_response, displayed_data = tricaster_data_link(ip=self.config['tricaster_ipaddr'], name=name)
+            name = self.scanned_names_list.item(index).text()
+
+            tricaster_response = tricaster_data_link(ip=self.config['tricaster_ipaddr'], data=name)
             if tricaster_response == 200:
                 self.statusBar().showMessage(f'Tricaster Confirmed: {displayed_data}')
             else:
@@ -251,7 +258,15 @@ Current IP is {self.config["tricaster_ipaddr"]}''',
         elif event.key() == Qt.Key_Left:
             self.previous_name()
         elif event.key() == Qt.Key_Space:
-            self.set_to_default()
+            self.display_name()
+
+    def confirm_audio(self):
+        url = QUrl.fromLocalFile(path.join(path.dirname(path.realpath(__file__)), 'assets', 'cork.mp3'))
+        content = QMediaContent(url)
+
+        self.player.setMedia(content)
+        self.player.setVolume(100)
+        self.player.play()
 
     def closeEvent(self, event):
         self.export_config()
@@ -267,17 +282,7 @@ class ImageWorker(QThread):
         self.capture = cv2.VideoCapture(kwargs['webcam_index'])
         self.ThreadActive = True
 
-        self.player = QMediaPlayer()
-
         self.qrscan = cv2.QRCodeDetector()
-
-    def confirm_audio(self):
-        url = QUrl.fromLocalFile(path.join(path.dirname(path.realpath(__file__)), 'assets', 'cork.mp3'))
-        content = QMediaContent(url)
-
-        self.player.setMedia(content)
-        self.player.setVolume(100)
-        self.player.play()
 
     def run(self):
         while self.ThreadActive:
@@ -290,10 +295,9 @@ class ImageWorker(QThread):
 
                 data, points, _ = self.qrscan.detectAndDecode(frame)
                 if len(data) > 0:
-                    if captured_data[-1] != data:
-                        self.ListUpdate.emit(data)
-                        captured_data.append(data)
-                        self.confirm_audio()
+                    # if captured_data[-1] != data:
+                    self.ListUpdate.emit(data)
+                    # captured_data.append(data)
 
     def stop(self):
         self.ThreadActive = False
