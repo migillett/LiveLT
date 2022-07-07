@@ -146,30 +146,36 @@ class LiveLTMainGui(QMainWindow):
         # Status Bar for program updates (placeholder until used later)
         self.statusBar().showMessage('')
 
+    # loads the config.json file on load. keeps settings the same between instances
     def load_config(self):
         if path.exists(self.config_json):
             with open(self.config_json, 'r') as j:
                 for key, value in json.load(j).items():
                     self.config[key] = value
 
+    # exporting running config to config.json
     def export_config(self):
         with open(self.config_json, 'w') as j:
             json.dump(self.config, j)
 
+    # change the tricaster target IP address
     def change_ip(self):
         ip, okPressed = QInputDialog.getText(
             self, 'Target IP Address', 'IP Address: ',
             QLineEdit.Normal, self.config['tricaster_ipaddr'])
         if okPressed:
+            # and save it to running config
             self.config['tricaster_ipaddr'] = ip
             self.tricaster_ip.setText(f'Tricaster IP: {self.config["tricaster_ipaddr"]}')
 
+    # add a custom name to the scanned_names_list
     def custom_name(self):
         name, okPressed = QInputDialog.getText(
             self, 'Add Name', 'Name: ', QLineEdit.Normal, '')
         if okPressed:
             self.update_name_list(name)
 
+    # change the default slide name (default is LiveLT, but can be organization name)
     def set_default_name(self):
         name, okPressed = QInputDialog.getText(
             self, 'Change Default Name', 'Default Name: ',
@@ -178,49 +184,64 @@ class LiveLTMainGui(QMainWindow):
             self.config['default_slide'] = name
             self.scanned_names_list.item(0).setText(self.config['default_slide'])
 
+    # show frame captured from webcam
     def view_frame(self, Image):
         self.FeedLabel.setPixmap(QPixmap.fromImage(Image))
 
+    # close camera
     def stop_camera(self):
         try:
             self.worker.stop()
         except AttributeError: # if the camera isn't open, ignore the error it throws
             pass
 
+    # start webcam capture after the user selects one from the dropdown
     def select_camera(self, index):
         self.stop_camera()
         self.config['webcam_index'] = index
         self.worker = ImageWorker(**self.config)
         self.worker.start()
-        self.worker.ImageUpdate.connect(self.view_frame)
-        self.worker.ListUpdate.connect(self.update_name_list)
+        # connect the worker emited signals to GUI functions
+        self.worker.ImageUpdate.connect(self.view_frame) # displays webcam frame on viewfinder
+        self.worker.ListUpdate.connect(self.update_name_list) # adds scanned name to the scanned names list
 
+    # when user clicks on an item in scanned_names_list
     def select_name(self, clicked_item):
         self.name_index = self.scanned_names_list.currentRow()
         self.display_name(self.name_index)
 
+    # what runs when the webcam successfully scans a QR code
     def update_name_list(self, item):
         # get max last in list
         last_item = self.scanned_names_list.count() - 1 
+        # check to make sure that the new item isn't the same as the last scanned (prevent duplicates)
         if item != self.scanned_names_list.item(last_item).text():
+            # Add item to scanned_names_list
             self.scanned_names_list.insertItem(self.scanned_names_list.count(), item)
+            # send auditory feedback of success
             self.confirm_audio()
 
+    # go back one name in scanned_names_list
     def previous_name(self):
+        # just make sure you already aren't at the first item in the list.
         if self.name_index != 0:
             self.name_index -= 1
             self.display_name(self.name_index)
 
+    # display next name
     def next_name(self):
+        # prevents indexerror if you're already at list maximum
         if self.name_index + 1 < self.scanned_names_list.count():
             self.name_index += 1
             self.display_name(self.name_index)
 
+    # sends the default slide to the specified tricaster IP to make sure all is good
     def test_connection(self):
         self.display_name()
         self.statusBar().showMessage(f'Connection established with Tricaster')
 
-    def display_name(self, index=0):
+    # The meat n'potatoes function. Sends the currently selected name to the tricaster.
+    def display_name(self, index=0): # index 0 will return the default slide specified in config.json
         try:
             name = self.scanned_names_list.item(index).text()
             tricaster_response, displayed_data = tricaster_data_link(ip=self.config['tricaster_ipaddr'], name=name)
@@ -237,6 +258,7 @@ Please check your Tricaster IP address in settings.
 Current IP is {self.config["tricaster_ipaddr"]}''',
                 title='Connection Error')
 
+    # for errors. duh.
     def error_window(self, title, message):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Critical)
@@ -244,14 +266,19 @@ Current IP is {self.config["tricaster_ipaddr"]}''',
         msg.setText(message)
         msg.exec_()
 
+    # keyboard shortcuts.
     def keyPressEvent(self, event):
+        # right arrow = next name
         if event.key() == Qt.Key_Right:
             self.next_name()
+        # left arrow = previous name
         elif event.key() == Qt.Key_Left:
             self.previous_name()
+        # space bar = display default name
         elif event.key() == Qt.Key_Space:
             self.display_name()
 
+    # plays a little sound to confirm name added
     def confirm_audio(self):
         url = QUrl.fromLocalFile(path.join(path.dirname(path.realpath(__file__)), 'assets', 'cork.mp3'))
         content = QMediaContent(url)
@@ -260,11 +287,17 @@ Current IP is {self.config["tricaster_ipaddr"]}''',
         self.player.setVolume(100)
         self.player.play()
 
+    # quit the program
     def closeEvent(self, event):
+        # exports json config before closing everything
         self.export_config()
+        exit()
 
 
+# treaded image ingest using OpenCV2
 class ImageWorker(QThread):
+
+    # Uses selected webcam to scan for QR codes, then emits them back to main GUI
     ImageUpdate = pyqtSignal(QImage)
     ListUpdate = pyqtSignal(object)
 
@@ -283,9 +316,11 @@ class ImageWorker(QThread):
                 Image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 ConvertToQtFormat = QImage(Image.data, Image.shape[1], Image.shape[0], QImage.Format_RGB888)
                 Pic = ConvertToQtFormat.scaled(self.width, self.height, Qt.KeepAspectRatio)
+                # send image back to main GUI for display on viewfinder
                 self.ImageUpdate.emit(Pic)
 
                 data, points, _ = self.qrscan.detectAndDecode(frame)
+                # if QR code detected, emit name to main GUI
                 if len(data) > 0:
                     self.ListUpdate.emit(data)
 
