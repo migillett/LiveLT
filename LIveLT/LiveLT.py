@@ -3,6 +3,7 @@
 # Written by Michael Gillett, 2022
 
 # built-in
+from ast import main
 import sys
 from os import path
 import json
@@ -19,6 +20,7 @@ from PyQt5.QtMultimediaWidgets import *
 
 # Local
 from functions.TricasterDataLink import tricaster_data_link
+from functions.QRCodeGenerator import CSVtoQR
 
 '''
 ### TO DO LIST ###
@@ -46,8 +48,6 @@ class LiveLTMainGui(QMainWindow):
         # set keyboard focus policy
         self.setFocusPolicy(Qt.StrongFocus)
 
-        self.setWindowTitle('LiveLT')
-
         self.name_index = 0
 
         self.available_cameras = QCameraInfo.availableCameras()
@@ -57,6 +57,26 @@ class LiveLTMainGui(QMainWindow):
         self.init_gui()
 
     def init_gui(self):
+        # GUI title
+        self.setWindowTitle('LiveLT')
+
+        # create menubar for settings and such
+        mainMenu = self.menuBar()
+        fileMenu = mainMenu.addMenu('File')
+        # helpMenu = mainMenu.addMenu('Help')
+
+        # file > create QR Codes
+        createQRButton = QAction(' &Create QR Codes...', self)
+        createQRButton.setStatusTip('Import a CSV file to create QR Codes')
+        createQRButton.triggered.connect(self.QR_code_gui)
+        fileMenu.addAction(createQRButton)
+
+        # file > exit
+        exitButton = QAction(' &Exit', self)
+        exitButton.setStatusTip('Exit LiveLT')
+        exitButton.triggered.connect(self.close)
+        fileMenu.addAction(exitButton)
+
         # setup central widget
         self.centralWidget = QWidget()
         self.setCentralWidget(self.centralWidget)
@@ -183,6 +203,10 @@ class LiveLTMainGui(QMainWindow):
         if okPressed:
             self.config['default_slide'] = name
             self.scanned_names_list.item(0).setText(self.config['default_slide'])
+
+    def QR_code_gui(self):
+        self.qr_gui = CSVtoQR()
+        self.qr_gui.show()
 
     # show frame captured from webcam
     def view_frame(self, Image):
