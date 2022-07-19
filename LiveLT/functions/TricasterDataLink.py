@@ -22,7 +22,7 @@ def tricaster_data_link(ip, webkey='WebKey 01', gfx_text='LiveLT'):
     try:
         url = f'http://{ip}:5952/v1/shortcut'
         r = requests.post(url=url, data=ET.tostring(xml_root), headers={"Content-Type": "text/xml"}, timeout=1)
-        return r.status_code, name
+        return r.status_code, gfx_text
     
     except Exception as e:
         raise e
@@ -31,5 +31,5 @@ def tricaster_data_link(ip, webkey='WebKey 01', gfx_text='LiveLT'):
 if __name__ == '__main__':
     print('Testing tricaster connection...')
     ip = str(input('Input Tricaster IP: '))
-    response, name = tricaster_data_link(ip=ip, name='LiveLT')
-    print(f'Tricaster responded with code: {response}\nCurrently showing: {name}')
+    response, gfx_text = tricaster_data_link(ip=ip, gfx_text='LiveLT')
+    print(f'Tricaster responded with code: {response}\nCurrently showing: {gfx_text}')
