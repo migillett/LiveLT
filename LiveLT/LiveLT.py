@@ -268,7 +268,7 @@ class LiveLTMainGui(QMainWindow):
     def display_name(self, index=0): # index 0 will return the default slide specified in config.json
         try:
             name = self.scanned_names_list.item(index).text()
-            tricaster_response, displayed_data = tricaster_data_link(ip=self.config['tricaster_ipaddr'], name=name)
+            tricaster_response, displayed_data = tricaster_data_link(ip=self.config['tricaster_ipaddr'], gfx_text=name)
             if tricaster_response == 200:
                 self.statusBar().showMessage(f'Tricaster Confirmed: {displayed_data}')
             else:

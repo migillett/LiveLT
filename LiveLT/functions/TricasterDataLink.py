@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 import requests
-from os import path
 import xml.etree.ElementTree as ET
 
 # This program connects to a NewTek Tricaster through it's DataLink feature
@@ -11,14 +10,14 @@ import xml.etree.ElementTree as ET
     # 2. You'll need to setup a lower third template with %webkey 01% in a text field
 
 
-def tricaster_data_link(ip, name='LiveLT', webkey='WebKey 01'):
+def tricaster_data_link(ip, webkey='WebKey 01', gfx_text='LiveLT'):
 
     # create XML file using user entries
     xml_root = ET.Element('shortcuts')
     shortcut_element = ET.SubElement(xml_root, 'shortcut')
     shortcut_element.set('name', 'datalink_set')
     ET.SubElement(shortcut_element, 'entry', key='key', value=webkey)
-    ET.SubElement(shortcut_element, 'entry', key='value', value=name)
+    ET.SubElement(shortcut_element, 'entry', key='value', value=gfx_text)
 
     try:
         url = f'http://{ip}:5952/v1/shortcut'
