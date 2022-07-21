@@ -28,8 +28,23 @@ def tricaster_data_link(ip, webkey='WebKey 01', gfx_text='LiveLT'):
         raise e
 
 
+
 if __name__ == '__main__':
     print('Testing tricaster connection...')
+    print('Press Ctrl + C to exit')
+
     ip = str(input('Input Tricaster IP: '))
-    response, gfx_text = tricaster_data_link(ip=ip, gfx_text='LiveLT')
-    print(f'Tricaster responded with code: {response}\nCurrently showing: {gfx_text}')
+
+    while True:
+        try:
+            webkey = str(input('Input WebKey: '))
+            text = str(input('Text to display: '))
+            response, gfx_text = tricaster_data_link(ip=ip, webkey=webkey, gfx_text=text)
+            print(f'Tricaster responded with code: {response}\nCurrently showing: {text}')
+        
+        except requests.ConnectTimeout:
+            print('Unable to contact Tricaster. Check your IP address and try again.')
+            break
+        
+        except KeyboardInterrupt:
+            break
