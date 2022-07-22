@@ -37,10 +37,10 @@ if __name__ == '__main__':
 
     while True:
         try:
-            webkey = str(input('Input WebKey: '))
+            webkey = str(input('\nInput WebKey: '))
             text = str(input('Text to display: '))
             response, gfx_text = tricaster_data_link(ip=ip, webkey=webkey, gfx_text=text)
-            print(f'Tricaster responded with code: {response}\nCurrently showing: {text}')
+            print(f'\nTricaster responded with code: {response}\nCurrently showing: {text}')
         
         except requests.ConnectTimeout:
             print('Unable to contact Tricaster. Check your IP address and try again.')

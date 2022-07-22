@@ -3,7 +3,6 @@
 # Written by Michael Gillett, 2022
 
 # built-in
-from ast import main
 import sys
 from os import path
 import json

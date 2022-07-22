@@ -9,6 +9,8 @@ This program is meant to help with Graduation ceremonies. What you'd do is give 
 ### Dependencies
 This script requires Python 3.10 or higher. You'll need to install a few dependencies as well by running `pip3 install -r ./requirements.txt` once you've cloned the repo.
 
+Also make sure it's running on a MacOS or Windows machine. I'm trying to get it to work on Linux, but haven't had any luck with my install of Pop_OS yet.
+
 ### How to Use
 1. On your Tricaster, start up a live switching project and click on the globe in the top-right corner. Take note of your Tricaster's IP address and save that for later. I highly recommend giving your Tricaster a static IP address or reserving the DHCP address on your router. See your router's manual for more information on this.
 
@@ -18,30 +20,36 @@ This script requires Python 3.10 or higher. You'll need to install a few depende
 
 4. In one of the text boxes, type `%WebKey 01%`. You can rename it something more specific, but you'll have to reconfigure `TricasterDataLink.py` to have it match. I wouldn't bother, personally.
 
-5. Clone the repository and install dependencies onto a windows machine with a webcam.
+5. Clone the repository and install dependencies onto a Windows or MacOS machine with a webcam and speakers. I've had limited luck with Linux sadly, but I'm working on that.
 
 6. Start the program with `python3 ./LiveLT.py`. This will start the GUI.
 
-7. Click the dropdown menu at the top of the GUI to select which webcam you want to use as a capture device. It should show up in the viewfinder window once you select it. You can use any camera (virtual or not) that you want, just make sure it's well-lit to read the QR codes properly.
+7. Click the dropdown menu at the top of the GUI to select which webcam you want to use as a capture device. It should show up in the viewfinder window once you select it. You can use any camera (virtual or not) that you want, just make sure it's well-lit to read the QR codes properly. If you don't see your camera, close the program, reseat the camera connection, and then re-launch the program. If you still have issues, let me know in a bug report. So far I've used NDI sources, OBS virtual cameras, built-in webcams, and USB webcams with no issues.
 
 8. Click on the button that says "Change IP". Paste the Tricaster's IP address here and click "OK".
 
 9. You can click the "Test Connection" button to make sure that LiveLT can communicate with the Tricaster. A little dialog will show up in the GUI's footer if successful. If not, the GUI will throw an error at you. You'll know when you see it.
 
-10. You can add names by scanning QR codes or by clicking on "Add Custom Name". The custom name button is useful for adding your organization's name if you want.
+10. You can add names by scanning QR codes or by clicking on "Add Custom Name".
 
-11. You can change slides in one of three ways: 1. use the left/right arrows on your keyboard, 2. click the "Next Name" or "Previous Name" buttons, or selecting a name from the list. All accomplish the same thing.
+11. You can also change the default slide by clicking the "Change Default Slide" button, which is great for if you want to display your institution's name.
 
-12. If you encounter an error, you can click the "Display Default" button.
+12. You can change slides in one of three ways: 1. use the left/right arrows on your keyboard, 2. click the "Next Name" or "Previous Name" buttons, or selecting a name from the list. All accomplish the same thing.
+
+13. If you need to display the default slide again, you can click the "Display Default" button or press the space bar.
 
 ### Tips and Tricks
-- The Tricaster and the machine running this software MUST be on the same network. Ideally, plugged into the same network switch.
+- The Tricaster and the machine running this software need be on the same network. Ideally, plugged into the same network switch. I've been able to send names across subnets with no issue, but you won't be able to reach the tricaster if they're not on the same LAN. And please, DON'T open a port for this.
 
 - The program saves its running config once you close it out. You can edit this by opening the `config.json` file in the repo folder. Most things are self-explanatory, but don't go too crazy.
 
-- You can find a script to make QR Codes en-masse inside the functions folder. You can feed it a CSV file with `FirstName` and `LastName` columns for student names. It'll go through all of them and create QR codes. This is testing for right now and I plan to add a GUI for this as well when the time comes.
+### Utilities
+You can create your own QR codes to scan using a built-in utility in the file menu. Just go to `File > Create QR Codes...` and it will bring up a GUI interface. Simply select a CSV file and where you want to export the qr code PNG files. The GUI may freeze if you have a lot of QR codes to make. I am aware of this issue, but I have yet to implement a workaround just yet.
+
+One thing to note is that the CSV needs to have specific column titles for it to work properly. You need to have names split into 2 columns: FirstName and LastName. The program will combine the names into one once scanned.
 
 ### Planned Updates
+- Fix QR Code GUI freezing when making PNG files en-masse
 - Create an executable file for ease of transport
 - Bug testing
-- GUI to create QR codes en-masse
+- Port to Linux
