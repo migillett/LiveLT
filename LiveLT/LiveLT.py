@@ -6,7 +6,7 @@
 import sys
 from os import path
 import json
-
+    
 # install using pip
 import cv2
 from PyQt5.QtWidgets import *
