@@ -6,6 +6,7 @@ from csv import DictReader
 import sys
 import qrcode
 from os import path, mkdir
+from multiprocessing import Process
 
 from PyQt5.QtWidgets import * 
 from PyQt5.QtGui import * 
@@ -24,7 +25,7 @@ class CSVtoQR(QMainWindow):
         self.current_dir = path.dirname(path.realpath(__file__))
         self.csv_path = None
 
-        self.total_rows = 0
+        self.total_rows = 1
         self.index = 1
 
         self.name_data = []
@@ -61,19 +62,21 @@ class CSVtoQR(QMainWindow):
         self.veritcalLayout.addWidget(self.export_dir_button)
 
         # progress bar
-        # self.pbar = QProgressBar(self)
-        # self.veritcalLayout.addWidget(self.pbar)
+        self.pbar = QProgressBar(self)
+        self.pbar.setMaximum(self.total_rows)
+        self.veritcalLayout.addWidget(self.pbar)
+        self.pbar.setVisible(False)
 
         # Create sub-layout for next and previous buttons
         self.nestedButtonsWidget = QWidget()
         self.nestedButtonsLayout = QHBoxLayout(self.nestedButtonsWidget)
         # cancel button
-        self.cancelButton = QPushButton('Cancel')
+        self.cancelButton = QPushButton('Close')
         self.cancelButton.clicked.connect(exit)
         self.nestedButtonsLayout.addWidget(self.cancelButton)
         # start button
         self.startButton = QPushButton('Start QR Creation')
-        self.startButton.clicked.connect(self.create_qr)
+        self.startButton.clicked.connect(self.start_qr_creation)
         self.nestedButtonsLayout.addWidget(self.startButton)
         # add sub-layout to root window
         self.veritcalLayout.addWidget(self.nestedButtonsWidget)
@@ -99,21 +102,57 @@ class CSVtoQR(QMainWindow):
             with open(self.csv_path, mode='r', newline='', encoding='utf-8-sig') as f:
                 self.name_data = list(DictReader(f))
                 self.total_rows = sum(1 for row in self.name_data)
+            self.pbar.setMaximum(self.total_rows)
 
-    def create_qr(self):
-        if not path.exists(self.export_dir):
-            mkdir(self.export_dir)
+    def start_qr_creation(self):
+        self.pbar.setVisible(True)
 
+        self.thread = QThread()
+        config = {
+            'name_data': self.name_data,
+            'export_dir': self.export_dir
+        }
+        self.worker = QRExport(**config)
+        self.worker.moveToThread(self.thread)
+
+        self.thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+        self.worker.PbarProcess.connect(self.pbar.setValue)
+        
+        self.thread.start()
+
+        self.thread.finished.connect(lambda: self.done_exporting())
+    
+    def done_exporting(self):
+        self.message_box(title='Export Complete', message=f'Successfully exported QR Codes. You may now close the window.')
+        self.pbar.setVisible(False)
+        self.index=1
+
+
+class QRExport(QThread):
+    PbarProcess = pyqtSignal(int)
+    finished = pyqtSignal()
+
+    def __init__(self, **args):
+        super().__init__()
+        self.name_data = args['name_data']
+        self.export_dir = args['export_dir']
+        self.index = 1
+
+    def run(self):
         for row in self.name_data:
             formatted_name = f'{row["FirstName"]} {row["LastName"]}'
             filename = "{:04d}_{}.png".format(self.index, formatted_name)
-            
+
             img = qrcode.make(formatted_name)
             img.save(path.join(self.export_dir, filename))
-            self.index += 1
-            # self.pbar.setValue(self.index)
 
-        self.message_box('Export Successful', f'Exported {self.index - 1} QR Codes')
+            self.PbarProcess.emit(self.index)
+            self.index += 1
+
+        self.finished.emit()
 
 
 if __name__ == '__main__':
