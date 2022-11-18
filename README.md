@@ -49,7 +49,7 @@ You can create your own QR codes to scan using a built-in utility in the file me
 One thing to note is that the CSV needs to have specific column titles for it to work properly. You need to have names split into 2 columns: FirstName and LastName. The program will combine the names into one once scanned.
 
 ### Planned Updates
-- Fix QR Code GUI freezing when making PNG files en-masse
+- Make the exported QR codes look nice so you can print them directly to 3x5 cards
 - Create an executable file for ease of transport
 - Bug testing
 - Port to Linux
