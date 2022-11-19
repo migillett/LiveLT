@@ -6,6 +6,7 @@
 import sys
 from os import path
 import json
+from csv import DictReader
     
 # install using pip
 import cv2
@@ -21,10 +22,6 @@ from PyQt5.QtMultimediaWidgets import *
 from functions.TricasterDataLink import tricaster_data_link
 from functions.QRCodeGenerator import CSVtoQR
 
-'''
-### TO DO LIST ###
-- bug test this business
-'''
 
 class LiveLTMainGui(QMainWindow):
     def __init__(self):
@@ -69,6 +66,12 @@ class LiveLTMainGui(QMainWindow):
         createQRButton.setStatusTip('Import a CSV file to create QR Codes')
         createQRButton.triggered.connect(self.QR_code_gui)
         fileMenu.addAction(createQRButton)
+
+        # file > load names...
+        loadNames = QAction(' &Load Names...', self)
+        loadNames.setStatusTip('Load names from a CSV file')
+        loadNames.triggered.connect(self.load_names)
+        fileMenu.addAction(loadNames)
 
         # file > exit
         exitButton = QAction(' &Exit', self)
@@ -203,6 +206,23 @@ class LiveLTMainGui(QMainWindow):
             self.config['default_slide'] = name
             self.scanned_names_list.item(0).setText(self.config['default_slide'])
 
+    # allows you to load a list of names from a CSV file
+    def load_names(self):
+        csv_path, filetype = QFileDialog.getOpenFileName(
+            self, 'Open CSV File', self.current_dir, "CSV Files (*.csv *.CSV)")
+
+        if csv_path.endswith('.csv'):
+            with open(csv_path, mode='r', newline='', encoding='utf-8-sig') as f:
+                name_data = list(DictReader(f))
+        
+            for name in name_data:
+                new_name = f"{name['FirstName']} {name['LastName']}"
+                self.update_name_list(new_name)
+
+        else:
+            self.error_window(title='Invalid Filetype', message='Invalid filetype. Please load a CSV file.')
+
+    # launches GUI interface to convert a CSV file to QR codes
     def QR_code_gui(self):
         self.qr_gui = CSVtoQR()
         self.qr_gui.show()
