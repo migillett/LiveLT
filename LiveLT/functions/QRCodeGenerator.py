@@ -6,17 +6,11 @@ from csv import DictReader
 import sys
 import qrcode
 from os import path, mkdir
-from multiprocessing import Process
 
 from PyQt5.QtWidgets import * 
 from PyQt5.QtGui import * 
 from PyQt5.QtCore import * 
 
-'''
-TO DO LIST:
-- Add threaded option for QR Code processing to prevent freezes
-- add progress bar to show status
-'''
 
 class CSVtoQR(QMainWindow):
     def __init__(self) -> None:
@@ -67,19 +61,11 @@ class CSVtoQR(QMainWindow):
         self.veritcalLayout.addWidget(self.pbar)
         self.pbar.setVisible(False)
 
-        # Create sub-layout for next and previous buttons
-        self.nestedButtonsWidget = QWidget()
-        self.nestedButtonsLayout = QHBoxLayout(self.nestedButtonsWidget)
-        # cancel button
-        self.cancelButton = QPushButton('Close')
-        self.cancelButton.clicked.connect(exit)
-        self.nestedButtonsLayout.addWidget(self.cancelButton)
         # start button
         self.startButton = QPushButton('Start QR Creation')
         self.startButton.clicked.connect(self.start_qr_creation)
-        self.nestedButtonsLayout.addWidget(self.startButton)
         # add sub-layout to root window
-        self.veritcalLayout.addWidget(self.nestedButtonsWidget)
+        self.veritcalLayout.addWidget(self.startButton)
 
     def csv_dialog_box(self):
         self.csv_path, filetype = QFileDialog.getOpenFileName(self, 'Open CSV File', self.current_dir, "CSV Files (*.csv *.CSV)")
@@ -143,7 +129,7 @@ class QRExport(QThread):
 
     def run(self):
         for row in self.name_data:
-            formatted_name = f'{row["FirstName"]} {row["LastName"]}'
+            formatted_name = row['Diploma Name']
             filename = "{:04d}_{}.png".format(self.index, formatted_name)
 
             img = qrcode.make(formatted_name)

@@ -1,0 +1,1 @@
+pyinstaller --onefile --name LiveLT --add-data ".\LiveLT\assets\cork.mp3;.\assets\cork.mp3" --noconsole .\LiveLT\LiveLT.py

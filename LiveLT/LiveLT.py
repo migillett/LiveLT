@@ -4,7 +4,7 @@
 
 # built-in
 import sys
-from os import path
+from os import path, mkdir
 import json
 from csv import DictReader
     
@@ -297,8 +297,7 @@ class LiveLTMainGui(QMainWindow):
             self.error_window(
                 message=f'''ERROR: {e}
                 
-Please check your Tricaster IP address in settings.
-Current IP is {self.config["tricaster_ipaddr"]}''',
+Please check your Tricaster IP address in settings.''',
                 title='Connection Error')
 
     # for errors. duh.
