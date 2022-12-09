@@ -291,14 +291,12 @@ class LiveLTMainGui(QMainWindow):
             if tricaster_response == 200:
                 self.statusBar().showMessage(f'Tricaster Confirmed: {displayed_data}')
             else:
-                self.error_window(message=f'ERROR: {tricaster_response}\n\nUnable to connect to Tricaster')
+                self.error_window(title='Connection Error', message=f'ERROR: {tricaster_response}\n\nUnable to connect to Tricaster')
 
         except Exception as e:
             self.error_window(
-                message=f'''ERROR: {e}
-                
-Please check your Tricaster IP address in settings.''',
-                title='Connection Error')
+                title='Connection Error',
+                message=f'ERROR: {e}\n\nPlease check your Tricaster IP address in settings.')
 
     # for errors. duh.
     def error_window(self, title, message):
